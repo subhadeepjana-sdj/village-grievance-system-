@@ -1,0 +1,34 @@
+from typing import Optional, List
+from datetime import datetime
+from pydantic import BaseModel
+
+class AIQueryRequest(BaseModel):
+    question: str
+    configuration: Optional[str] = "rag_verification"  # baseline / rag / rag_verification
+
+class EvidenceOut(BaseModel):
+    document_id: Optional[int] = None
+    chunk_id: Optional[str] = None
+    similarity_score: Optional[float] = None
+    evidence_text: str
+    source_type: str
+
+class VerificationResultOut(BaseModel):
+    claim: str
+    evidence: Optional[str] = None
+    verification_result: str  # SUPPORTED / CONTRADICTED / INSUFFICIENT_EVIDENCE
+    confidence: float
+    reason: Optional[str] = None
+
+class AIQueryResponse(BaseModel):
+    id: int
+    question: str
+    answer: str
+    decision: str  # SHOW / CORRECT / ABSTAIN
+    verification_status: str  # SUPPORTED / CONTRADICTED / INSUFFICIENT_EVIDENCE
+    confidence: float
+    processing_time: float
+    configuration: str
+    created_at: datetime
+    evidences: List[EvidenceOut] = []
+    verification_results: List[VerificationResultOut] = []

@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════
+   GIS DESIGN SYSTEM  – Tailwind v4 compatible
+   ═══════════════════════════════════════════════════ */
+
+:root {
+  --gis-blue:       #0047BA;
+  --gis-blue-dark:  #00368C;
+  --gis-blue-soft:  #E8F0FE;
+  --gis-cyan:       #00A3E0;
+  --gis-green:      #00B050;
+  --gis-green-soft: #E6F7ED;
+  --gis-orange:     #FF8A00;
+  --gis-red:        #FF4D4F;
+  --gis-bg:         #F0F4F9;
+  --gis-card:       #FFFFFF;
+  --gis-border:     #E2E8F0;
+  --gis-text:       #1A202C;
+  --gis-muted:      #64748B;
+  --gis-light:      #94A3B8;
+  /* legacy civic aliases */
+  --forest:         #153D32;
+  --forest-dark:    #0D2821;
+  --lime:           #D7F36A;
+  --ink:            #17221F;
+  --ink-secondary:  #404B46;
+  --ivory:          #F7F6F0;
+  --sage:           #EFF5EF;
+  --sage-border:    #DDE8DD;
+  --slate-muted:    #69736D;
+  --soft-border:    #E5E7DF;
+  --semantic-supported:    #00B050;
+  --semantic-contradicted: #FF4D4F;
+  --semantic-insufficient: #64748B;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background-color: var(--gis-bg);
+  color: var(--gis-text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,h2,h3,h4,h5,h6 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.font-heading  { font-family: 'Plus Jakarta Sans', sans-serif; }
+.font-body     { font-family: 'Inter', sans-serif; }
+.font-editorial { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+/* ─── Card primitives ─────────────────────────────── */
+.gis-card, .civic-card {
+  background: #FFFFFF;
+  border-radius: 1rem;
+  border: 1px solid #E5E7DF;
+  box-shadow: 0 2px 8px rgba(0,71,186,0.04);
+  transition: box-shadow 0.2s ease;
+}
+.gis-card:hover, .civic-card:hover {
+  box-shadow: 0 6px 20px rgba(0,71,186,0.09);
+}
+
+/* ─── Forest dark panel (hero showcase bg) ─────────── */
+.civic-panel-forest {
+  background: linear-gradient(135deg, #153D32 0%, #0D2821 60%, #071A14 100%);
+  border-radius: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ─── Buttons ─────────────────────────────────────── */
+.btn-gis-primary, .btn-civic-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  background: #0047BA; color: #fff; font-weight: 700; font-size: 0.875rem;
+  padding: 0.65rem 1.4rem; border-radius: 0.875rem; border: 1px solid transparent;
+  transition: all 0.18s ease; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,71,186,0.22);
+  text-decoration: none;
+}
+.btn-gis-primary:hover, .btn-civic-primary:hover {
+  background: #00368C; transform: translateY(-1px);
+  box-shadow: 0 7px 20px rgba(0,71,186,0.32);
+}
+
+.btn-gis-secondary, .btn-civic-secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  background: #fff; color: #1A202C; font-weight: 600; font-size: 0.875rem;
+  padding: 0.65rem 1.4rem; border-radius: 0.875rem; border: 1px solid #E2E8F0;
+  transition: all 0.18s ease; cursor: pointer; text-decoration: none;
+}
+.btn-gis-secondary:hover, .btn-civic-secondary:hover {
+  border-color: #0047BA; color: #0047BA; background: #F0F4FB;
+}
+
+.btn-gis-cyan, .btn-civic-lime {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  background: #D7F36A; color: #153D32; font-weight: 700; font-size: 0.875rem;
+  padding: 0.65rem 1.4rem; border-radius: 0.875rem;
+  transition: all 0.18s ease; cursor: pointer; text-decoration: none;
+}
+.btn-gis-cyan:hover, .btn-civic-lime:hover {
+  background: #c8e85c; transform: translateY(-1px);
+}
+
+/* ─── Status pills ────────────────────────────────── */
+.gis-pill-open {
+  border: 1.5px solid #00A3E0; color: #00A3E0;
+  background: rgba(0,163,224,0.07); border-radius: 9999px;
+  padding: 0.2rem 0.85rem; font-size: 0.7rem; font-weight: 700;
+  display: inline-flex; align-items: center;
+}
+.gis-pill-closed {
+  background: #00B050; color: #fff; border-radius: 9999px;
+  padding: 0.2rem 0.85rem; font-size: 0.7rem; font-weight: 700;
+  display: inline-flex; align-items: center;
+}
+.gis-pill-progress {
+  border: 1.5px solid #FF8A00; color: #FF8A00;
+  background: rgba(255,138,0,0.07); border-radius: 9999px;
+  padding: 0.2rem 0.85rem; font-size: 0.7rem; font-weight: 700;
+  display: inline-flex; align-items: center;
+}
+
+/* ─── Scrollbar ───────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--gis-bg); }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+.gis-sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.gis-sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.gis-sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); border-radius: 9999px; }
+.gis-sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.45); }
+
+
+/* ─── Entrance animation ──────────────────────────── */
+@keyframes gisFadeIn {
+  from { opacity:0; transform:translateY(8px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.animate-gis-fade { animation: gisFadeIn 0.3s cubic-bezier(0.16,1,0.3,1) forwards; }
+
+/* ─── Badges ──────────────────────────────────────── */
+.badge-supported   { background:#E6F7ED; color:#00B050; border:1px solid #A3E3BE; border-radius:6px; padding:2px 8px; font-size:0.7rem; font-weight:700; }
+.badge-contradicted{ background:#FFF1F0; color:#FF4D4F; border:1px solid #FFCCC7; border-radius:6px; padding:2px 8px; font-size:0.7rem; font-weight:700; }
+.badge-insufficient{ background:#F1F5F9; color:#64748B; border:1px solid #E2E8F0; border-radius:6px; padding:2px 8px; font-size:0.7rem; font-weight:700; }
+.badge-pending     { background:#E8F0FE; color:#0047BA; border:1px solid #BFDBFE; border-radius:6px; padding:2px 8px; font-size:0.7rem; font-weight:700; }
+.badge-in-progress { background:#FFF4E5; color:#FF8A00; border:1px solid #FED7AA; border-radius:6px; padding:2px 8px; font-size:0.7rem; font-weight:700; }

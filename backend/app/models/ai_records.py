@@ -1,0 +1,77 @@
+import datetime
+# pyrefly: ignore [missing-import]
+from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey
+# pyrefly: ignore [missing-import]
+from sqlalchemy.orm import relationship
+from app.database.session import Base
+
+class AIQuery(Base):
+    __tablename__ = "ai_queries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    question = Column(Text, nullable=False)
+    query_type = Column(String(50), default="GENERAL", nullable=False)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+
+    user = relationship("User", back_populates="ai_queries")
+    response = relationship("AIResponse", back_populates="query", uselist=False)
+
+class AIResponse(Base):
+    __tablename__ = "ai_responses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    query_id = Column(Integer, ForeignKey("ai_queries.id", ondelete="CASCADE"), nullable=False)
+    answer = Column(Text, nullable=False)
+    decision = Column(String(50), nullable=False)  # SHOW / CORRECT / ABSTAIN / SUPPORTED / CONTRADICTED / INSUFFICIENT_EVIDENCE
+    confidence = Column(Float, nullable=False, default=0.0)
+    processing_time = Column(Float, nullable=False, default=0.0)  # seconds
+    configuration = Column(String(50), default="rag_verification", nullable=False)  # baseline / rag / rag_verification
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    query = relationship("AIQuery", back_populates="response")
+    evidences = relationship("Evidence", back_populates="response", cascade="all, delete-orphan")
+    verification_results = relationship("VerificationResult", back_populates="response", cascade="all, delete-orphan")
+
+class Evidence(Base):
+    __tablename__ = "evidences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    response_id = Column(Integer, ForeignKey("ai_responses.id", ondelete="CASCADE"), nullable=False)
+    document_id = Column(Integer, nullable=True)
+    chunk_id = Column(String(100), nullable=True)
+    similarity_score = Column(Float, nullable=True)
+    evidence_text = Column(Text, nullable=False)
+    source_type = Column(String(50), default="KNOWLEDGE_BASE")  # KNOWLEDGE_BASE / COMPLAINT_RECORD / SCHEME
+
+    response = relationship("AIResponse", back_populates="evidences")
+
+class VerificationResult(Base):
+    __tablename__ = "verification_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    response_id = Column(Integer, ForeignKey("ai_responses.id", ondelete="CASCADE"), nullable=False)
+    claim = Column(Text, nullable=False)
+    evidence = Column(Text, nullable=True)
+    verification_result = Column(String(50), nullable=False)  # SUPPORTED / CONTRADICTED / INSUFFICIENT_EVIDENCE
+    confidence = Column(Float, default=0.0)
+    reason = Column(Text, nullable=True)
+
+    response = relationship("AIResponse", back_populates="verification_results")
+
+class ResearchMetric(Base):
+    __tablename__ = "research_metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(String(100), nullable=False, index=True)
+    config_type = Column(String(50), nullable=False)  # STANDALONE_LLM / RAG_LLM / RAG_VERIFICATION
+    factual_accuracy = Column(Float, nullable=False)
+    hallucination_rate = Column(Float, nullable=False)
+    faithfulness = Column(Float, nullable=False)
+    retrieval_recall = Column(Float, nullable=False)
+    precision = Column(Float, nullable=False)
+    recall = Column(Float, nullable=False)
+    f1_score = Column(Float, nullable=False)
+    abstention_accuracy = Column(Float, nullable=False)
+    avg_latency = Column(Float, nullable=False)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
