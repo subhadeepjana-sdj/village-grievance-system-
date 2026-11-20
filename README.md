@@ -77,15 +77,17 @@ An evidence-grounded AI question-answering and grievance management system for r
 - **Thread-Safe Singleton Model Loader (`models/model_loader.py`)**: Caches tokenizer and cross-encoder weights once in memory; auto-detects hardware (`CUDA`, `MPS`, `CPU`).
 - **DeBERTa-v3 Cross-Encoder Classifier (`models/nli_classifier.py`)**: Computes bidirectional cross-attention over $(P, H)$ pairs with sequence truncation ($512$ tokens), temperature scaling ($T = 1.15$), and dynamic label index mapping.
 
-### Feature 4: Confidence-Based Verification & Calibration
-- **Independent Composite Confidence**: Replaces unreliable LLM self-reported scores with an empirical formulation:
+### Feature 4: Confidence-Based Verification, Decision Engine & Correction Loop
+- **Empirical Composite Confidence Scorer (`engine/confidence_scorer.py`)**: Replaces unreliable LLM self-reported scores with a mathematically grounded confidence formula:
   $$\mathcal{C}(H \mid P) = A_{\text{source}} \times S_{\text{match}} \times \max\left(0, \; \hat{p}_E - \lambda \cdot \hat{p}_C\right) \times 100\%$$
-- **Temperature Scaling ($T = 1.15$)**: Softens raw model logits to curb overconfidence on out-of-domain queries.
-- **Expected Calibration Error (ECE)**: Evaluates confidence reliability across probability bins.
+  where $A_{\text{source}}$ is source authority weight ($1.00$ for PostgreSQL DB complaint records, $0.90$ for official verified guidelines, $0.60$ for unverified documents), $S_{\text{match}}$ is evidence retrieval relevance, $\hat{p}_E$ is temperature-scaled entailment probability, and $\lambda = 2.0$ penalizes contradictions.
+- **System-Wide Confidence Aggregation**: Averages individual claim scores and applies severe holistic penalties if any claim is refuted ($65\%$ penalty) or unverified ($25\%$ penalty).
+- **Master Decision Engine (`engine/decision_engine.py`)**: Orchestrates the verification pipeline across claim extraction $\to$ deterministic DB check $\to$ evidence mapping $\to$ NLI cross-encoder $\to$ composite confidence aggregation, returning a structured `VerificationReport`.
 - **Calibrated Three-Way Decision Policy**:
-  - `SUPPORTED`: $\mathcal{C} \ge 75\%$ AND $\hat{p}_C < 0.15$
-  - `CONTRADICTED`: $\hat{p}_C \ge 0.65$ OR database field mismatch
-  - `INSUFFICIENT_EVIDENCE`: $\mathcal{C} < 70\%$ OR $\hat{p}_N \ge 0.60$
+  - `SHOW` (Accepted): Supported claims dominate and overall calibrated confidence $\ge 55\%$.
+  - `CORRECT` (Regenerate): Contradiction detected ($\hat{p}_C \ge 0.65$ or DB mismatch); triggers negative-constraint correction directives.
+  - `ABSTAIN` (Safe Refusal): Unsupported or insufficient evidence; triggers controlled polite refusal directing citizen to the Gram Panchayat office.
+- **Bounded Two-Retry Correction Loop (`engine/corrector.py`)**: Re-synthesizes answers using negative constraints (*"Do NOT claim X was assigned to PWD..."*), re-verifying after each iteration. If contradictions persist after 2 attempts, falls back to a deterministic verified-record override.
 
 ---
 
@@ -142,7 +144,10 @@ village-grievance-system/
 │   │   │   ├── models/
 │   │   │   │   ├── model_loader.py      # Singleton NLI model loader & device detector
 │   │   │   │   └── nli_classifier.py    # DeBERTa-v3 cross-encoder inference engine
-│   │   │   ├── engine/                # Decision engine, confidence scorer, correction loop
+│   │   │   ├── engine/                # Master Decision Engine & Correction Loop
+│   │   │   │   ├── confidence_scorer.py # Multi-source empirical composite confidence calculator
+│   │   │   │   ├── decision_engine.py   # Multi-stage claim-level verification coordinator
+│   │   │   │   └── corrector.py         # Negative-constraint bounded 2-retry correction loop
 │   │   │   └── evaluation/            # Academic evaluation datasets & metrics
 │   │   ├── hallucination/             # Core decision engine & confidence scoring
 │   │   └── evaluation/
@@ -153,7 +158,8 @@ village-grievance-system/
 │   │   └── verification/
 │   │       ├── test_extraction.py     # Claim extraction & SBD unit tests (8 tests)
 │   │       ├── test_evidence.py       # DB verifier & evidence mapper unit tests (7 tests)
-│   │       └── test_nli.py            # DeBERTa NLI inference & loader unit tests (5 tests)
+│   │       ├── test_nli.py            # DeBERTa NLI inference & loader unit tests (5 tests)
+│   │       └── test_confidence.py     # Confidence scorer, decision engine & corrector (8 tests)
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── frontend/
@@ -196,7 +202,7 @@ npm run dev
 
 ## 6. Running the Test Suites
 
-### All Verification Engine Unit Tests (20 tests)
+### All Verification Engine Unit Tests (28 tests)
 ```bash
 cd backend
 python -m unittest discover -s tests/verification -p "test_*.py" -v
@@ -205,6 +211,7 @@ Runs:
 - `test_extraction.py`: 8 tests covering schema validation, SBD, abbreviation protection, and atomic proposition decomposition.
 - `test_evidence.py`: 7 tests covering deterministic DB checks, department synonym resolution, non-existent complaint detection, and evidence mapping.
 - `test_nli.py`: 5 tests covering singleton model loading, entailment, contradiction, neutral / insufficient evidence, and batching.
+- `test_confidence.py`: 8 tests covering empirical composite confidence scoring, contradiction penalization, holistic confidence aggregation, decision routing (`SHOW`, `CORRECT`, `ABSTAIN`), and negative-constraint 2-retry correction loop.
 
 ### End-to-End Pipeline Regression Tests
 ```bash

@@ -99,11 +99,11 @@ class LLMService:
         
         if complaint_evidences:
             comp_text = complaint_evidences[0]["evidence_text"]
-            # Extract key details from text representation
-            num_match = re_search(r'ID:\s*([A-Z0-9-]+)', comp_text)
-            status_match = re_search(r'Status:\s*([^\n]+)', comp_text)
-            dept_match = re_search(r'Department Handling:\s*([^\n]+)', comp_text)
-            category_match = re_search(r'Category:\s*([^\n]+)', comp_text)
+            # Extract key details from text representation (robust to multiple schema formats)
+            num_match = re_search(r'(?:ID:|RECORD|COMPLAINT)\s*([A-Z0-9-]+)', comp_text) or re_search(r'([A-Z]{2,4}-\d{4}-\d{4,6})', comp_text)
+            status_match = re_search(r'Status:\s*([^\n.]+)', comp_text)
+            dept_match = re_search(r'Department(?:\s*Handling)?:\s*([^\n.]+)', comp_text)
+            category_match = re_search(r'Category:\s*([^\n.]+)', comp_text)
             
             c_num = num_match if num_match else "your complaint"
             c_status = status_match if status_match else "Under Review"
