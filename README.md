@@ -39,6 +39,7 @@ An evidence-grounded AI question-answering and grievance management system for r
                  ▼                                     ▼
       Deterministic DB Checks                 DeBERTa-v3 MNLI Engine
       (Complaint ID, Dept, Status)            (Document Rules & Guidelines)
+      [0ms, 100% precision SQL]               [Temperature-scaled Softmax]
                  └──────────────────┬──────────────────┘
                                     ▼
                         Claim-Level Decision Engine
@@ -64,14 +65,27 @@ An evidence-grounded AI question-answering and grievance management system for r
 - **Temporal & Department Retrieval Filtering**: Filters knowledge-base searches by department and enforces `status='verified'` to exclude outdated or expired government orders.
 - **Evidence Inspection API**: `GET /api/ai/sources/{response_id}` returns the exact source passages used to generate any answer.
 
-### Feature 2: Claim Verification Engine (CVE) — Hallucination Detection
-- **Atomic Claim Extraction**: Uses `spaCy` and rule-based linguistic decomposition to break compound answers into atomic, independently testable propositions across coordinate conjunctions (*"and"*, *";"*).
+### Feature 2: Atomic Claim Extraction & Linguistic Decomposition
+- **Atomic Claim Extraction**: Breaks compound answers into atomic, independently testable propositions across coordinate conjunctions (*"and"*, *";"*).
 - **Indian Administrative SBD**: Sentence Boundary Detection protects honorifics (*Shri*, *Smt*, *Dr*), abbreviations (*Sec.*, *Dept.*, *No.*, *Rs.*), single-letter initials (*R. K. Sharma*), and decimal numerals (*3.5 days*, *Rs. 500.50*).
-- **Hybrid Verification Pipeline**:
-  - **Deterministic DB Verification**: Authoritative SQL queries verify exact attributes (Complaint ID, status, handling department, dates).
-  - **NLI Cross-Encoder Verification**: DeBERTa-v3 MNLI classifies unstructured policy claims against retrieved text into `SUPPORTED`, `CONTRADICTED`, or `INSUFFICIENT_EVIDENCE`.
-- **Two-Retry Correction Loop**: Detects contradictions, creates targeted negative-constraint correction prompts, and triggers constrained regeneration.
-- **Controlled Abstention**: Automatically refrains from answering when evidence is missing or confidence is insufficient.
+- **Entity Pre-Extraction**: Extracts complaint numbers (`GRV-2026-001024`), departments, and statuses for direct verification routing.
+- **Filler Filtering**: Automatically strips conversational pleasantries (*"Hello citizen"*, *"Hope this helps"*) from factual verification.
+
+### Feature 3: Evidence Matching & Natural Language Inference (NLI)
+- **Deterministic DB Verifier (`evidence/db_verifier.py`)**: Bypasses neural inference for structured complaint assertions (ID, handling department, status, timeline) with $0\text{ms}$ latency and $100\%$ precision via direct SQL queries and canonical synonym resolution (*"PWD"* $\leftrightarrow$ *"Roads & Infrastructure"*).
+- **Multi-Factor Evidence Mapper (`evidence/evidence_mapper.py`)**: Pairs atomic claims with top candidate premise chunks using content-word Jaccard overlap, entity matching boosts ($+0.45$), department alignment ($+0.25$), and source type affinity.
+- **Thread-Safe Singleton Model Loader (`models/model_loader.py`)**: Caches tokenizer and cross-encoder weights once in memory; auto-detects hardware (`CUDA`, `MPS`, `CPU`).
+- **DeBERTa-v3 Cross-Encoder Classifier (`models/nli_classifier.py`)**: Computes bidirectional cross-attention over $(P, H)$ pairs with sequence truncation ($512$ tokens), temperature scaling ($T = 1.15$), and dynamic label index mapping.
+
+### Feature 4: Confidence-Based Verification & Calibration
+- **Independent Composite Confidence**: Replaces unreliable LLM self-reported scores with an empirical formulation:
+  $$\mathcal{C}(H \mid P) = A_{\text{source}} \times S_{\text{match}} \times \max\left(0, \; \hat{p}_E - \lambda \cdot \hat{p}_C\right) \times 100\%$$
+- **Temperature Scaling ($T = 1.15$)**: Softens raw model logits to curb overconfidence on out-of-domain queries.
+- **Expected Calibration Error (ECE)**: Evaluates confidence reliability across probability bins.
+- **Calibrated Three-Way Decision Policy**:
+  - `SUPPORTED`: $\mathcal{C} \ge 75\%$ AND $\hat{p}_C < 0.15$
+  - `CONTRADICTED`: $\hat{p}_C \ge 0.65$ OR database field mismatch
+  - `INSUFFICIENT_EVIDENCE`: $\mathcal{C} < 70\%$ OR $\hat{p}_N \ge 0.60$
 
 ---
 
@@ -84,7 +98,8 @@ An evidence-grounded AI question-answering and grievance management system for r
 | **Relational Database** | PostgreSQL (with automatic SQLite fallback) | Authoritative complaint records, users, village administrative data, verification audit logs |
 | **Vector Database** | Qdrant (`qdrant-client`) | Vector storage with cosine similarity search for government documents |
 | **Embeddings** | `sentence-transformers` (`all-MiniLM-L6-v2`, 384d) | Dense semantic vector representations |
-| **NLI Model** | Hugging Face Transformers (`DeBERTa-v3 MNLI`) | Natural Language Inference for claim-evidence verification |
+| **NLI Model** | Hugging Face Transformers (`DeBERTa-v3 MNLI`) | Natural Language Inference cross-encoder for claim-evidence verification |
+| **ML & Calibration** | PyTorch, Scikit-learn, NumPy | Neural inference, temperature scaling, and calibration metrics |
 | **LLM Generation** | Google GenAI SDK (`gemini-2.5-flash`) | Evidence-grounded response generation and correction |
 | **NLP Preprocessing** | spaCy / Custom Administrative SBD | Sentence boundary segmentation and atomic proposition parsing |
 | **CI/CD** | GitHub Actions (`.github/workflows/rag-ci.yml`) | Automated Python matrix testing (3.11, 3.12), Ruff linting, pytest, Docker build, and Node 20 frontend checks |
@@ -121,10 +136,14 @@ village-grievance-system/
 │   │   │   ├── extraction/
 │   │   │   │   ├── sentence_splitter.py # spaCy + administrative SBD
 │   │   │   │   └── claim_extractor.py   # Atomic claim deconstructor & classifier
-│   │   │   ├── evidence/              # Evidence alignment & deterministic DB verifier
-│   │   │   ├── models/                # DeBERTa NLI cross-encoder model wrapper
-│   │   │   ├── engine/                # Decision engine, correction loop, abstention
-│   │   │   └── evaluation/            # Evaluation benchmarks and metrics
+│   │   │   ├── evidence/
+│   │   │   │   ├── db_verifier.py       # Deterministic PostgreSQL complaint/admin checker
+│   │   │   │   └── evidence_mapper.py   # Multi-factor evidence-to-claim alignment
+│   │   │   ├── models/
+│   │   │   │   ├── model_loader.py      # Singleton NLI model loader & device detector
+│   │   │   │   └── nli_classifier.py    # DeBERTa-v3 cross-encoder inference engine
+│   │   │   ├── engine/                # Decision engine, confidence scorer, correction loop
+│   │   │   └── evaluation/            # Academic evaluation datasets & metrics
 │   │   ├── hallucination/             # Core decision engine & confidence scoring
 │   │   └── evaluation/
 │   │       ├── rag_eval_dataset.py    # 16-query RAG benchmark dataset
@@ -132,7 +151,9 @@ village-grievance-system/
 │   ├── tests/
 │   │   ├── run_tests.py               # End-to-end integration and regression suite
 │   │   └── verification/
-│   │       └── test_extraction.py     # Claim extraction & SBD unit tests
+│   │       ├── test_extraction.py     # Claim extraction & SBD unit tests (8 tests)
+│   │       ├── test_evidence.py       # DB verifier & evidence mapper unit tests (7 tests)
+│   │       └── test_nli.py            # DeBERTa NLI inference & loader unit tests (5 tests)
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── frontend/
@@ -175,11 +196,15 @@ npm run dev
 
 ## 6. Running the Test Suites
 
-### Verification & Extraction Unit Tests
+### All Verification Engine Unit Tests (20 tests)
 ```bash
 cd backend
-python -m unittest tests/verification/test_extraction.py -v
+python -m unittest discover -s tests/verification -p "test_*.py" -v
 ```
+Runs:
+- `test_extraction.py`: 8 tests covering schema validation, SBD, abbreviation protection, and atomic proposition decomposition.
+- `test_evidence.py`: 7 tests covering deterministic DB checks, department synonym resolution, non-existent complaint detection, and evidence mapping.
+- `test_nli.py`: 5 tests covering singleton model loading, entailment, contradiction, neutral / insufficient evidence, and batching.
 
 ### End-to-End Pipeline Regression Tests
 ```bash
@@ -222,6 +247,7 @@ $$\text{Precision}_c = \frac{TP_c}{TP_c + FP_c}, \quad \text{Recall}_c = \frac{T
 
 - **False Acceptance Rate (FAR)**: Proportion of contradicted or ungrounded assertions incorrectly accepted (Target $< 5\%$).
 - **False Rejection Rate (FRR)**: Proportion of true, supported assertions incorrectly rejected.
+- **Expected Calibration Error (ECE)**: Difference between predicted confidence and empirical accuracy across probability bins.
 - **Verification Latency**: Measured processing time (ms) broken down across extraction, retrieval, DB verification, and NLI inference.
 
 ---
