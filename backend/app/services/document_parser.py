@@ -68,18 +68,20 @@ class DocumentParserService:
         Word approximation: 600 words / 100-word overlap stays inside those bands.
         """
         # --- Exact tokenisation via tiktoken (optional dependency) ---
+        # tiktoken is not a required dependency; the ImportError path is intentional.
         try:
-            import tiktoken
-            enc = tiktoken.get_encoding("cl100k_base")
+            import tiktoken  # type: ignore[import-not-found]  # noqa: F401, PLC0415
+
+            enc = tiktoken.get_encoding("cl100k_base")  # type: ignore[name-defined]
 
             def _token_chunk(text: str, page_num: int) -> List[Dict[str, Any]]:
-                tokens = enc.encode(text)
+                tokens = enc.encode(text)  # type: ignore[name-defined]
                 result: List[Dict[str, Any]] = []
                 target, ovlp = chunk_size_words, overlap_words
                 start = 0
                 while start < len(tokens):
                     end = min(start + target, len(tokens))
-                    chunk_text = enc.decode(tokens[start:end]).strip()
+                    chunk_text = enc.decode(tokens[start:end]).strip()  # type: ignore[name-defined]
                     if chunk_text:
                         result.append({"page_number": page_num, "text": chunk_text})
                     if end == len(tokens):
@@ -95,7 +97,7 @@ class DocumentParserService:
             return chunks
 
         except ImportError:
-            pass  # tiktoken not installed — fall through to word approximation
+            pass  # tiktoken not installed — fall through to word-count approximation below
 
         # --- Word-count approximation ---
         chunks: List[Dict[str, Any]] = []
