@@ -2,9 +2,13 @@ from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel
 
+
 class AIQueryRequest(BaseModel):
     question: str
-    configuration: Optional[str] = "rag_verification"  # baseline / rag / rag_verification
+    configuration: Optional[str] = "rag_verification"  # baseline | rag | rag_verification
+    language: Optional[str] = "en"       # ISO 639-1 language code (e.g. "en", "hi", "bn")
+    department: Optional[str] = None     # Optional department filter for Qdrant retrieval
+
 
 class EvidenceOut(BaseModel):
     document_id: Optional[int] = None
@@ -13,6 +17,7 @@ class EvidenceOut(BaseModel):
     evidence_text: str
     source_type: str
 
+
 class VerificationResultOut(BaseModel):
     claim: str
     evidence: Optional[str] = None
@@ -20,12 +25,13 @@ class VerificationResultOut(BaseModel):
     confidence: float
     reason: Optional[str] = None
 
+
 class AIQueryResponse(BaseModel):
     id: int
     question: str
     answer: str
-    decision: str  # SHOW / CORRECT / ABSTAIN
-    verification_status: str  # SUPPORTED / CONTRADICTED / INSUFFICIENT_EVIDENCE
+    decision: str               # SHOW / CORRECT / ABSTAIN
+    verification_status: str    # SUPPORTED / CONTRADICTED / INSUFFICIENT_EVIDENCE
     confidence: float
     processing_time: float
     configuration: str

@@ -20,7 +20,21 @@ class ResponseDecisionEngine:
         """
         current_answer = initial_answer_dict.get("answer", "")
         current_claims = initial_answer_dict.get("claims", [])
-        
+
+        # Short-circuit: if the retriever returned no evidence at all, we have
+        # nothing to ground an answer on — immediately ABSTAIN instead of letting
+        # the LLM hallucinate a "SUPPORTED" response.
+        if not evidence_list:
+            return {
+                "answer": "I could not find sufficient verified information in village records to answer this question. Please contact the Gram Panchayat office.",
+                "decision": "ABSTAIN",
+                "verification_status": "INSUFFICIENT_EVIDENCE",
+                "confidence": 0.0,
+                "verification_results": [],
+                "evidences": [],
+                "attempts": 0
+            }
+
         attempt = 0
         validation = hallucination_validator.validate_response(current_answer, current_claims, evidence_list)
 

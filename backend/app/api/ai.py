@@ -10,6 +10,10 @@ from app.rag.pipeline import rag_pipeline
 
 router = APIRouter(prefix="/ai", tags=["AI Assistant & RAG"])
 
+
+# ------------------------------------------------------------------ #
+#  POST /api/ai/query                                                 #
+# ------------------------------------------------------------------ #
 @router.post("/query", response_model=AIQueryResponse)
 def ask_ai_assistant(
     request: AIQueryRequest,
@@ -26,7 +30,8 @@ def ask_ai_assistant(
         question=request.question,
         db=db,
         user_id=user_id,
-        configuration=config
+        configuration=config,
+        department_filter=request.department   # ← new filter param
     )
 
     ev_outs = [
@@ -65,12 +70,22 @@ def ask_ai_assistant(
         verification_results=vr_outs
     )
 
+
+# ------------------------------------------------------------------ #
+#  GET /api/ai/history                                                #
+# ------------------------------------------------------------------ #
 @router.get("/history", response_model=List[AIQueryResponse])
 def get_ai_history(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    queries = db.query(AIQuery).filter(AIQuery.user_id == current_user.id).order_by(AIQuery.timestamp.desc()).limit(20).all()
+    queries = (
+        db.query(AIQuery)
+        .filter(AIQuery.user_id == current_user.id)
+        .order_by(AIQuery.timestamp.desc())
+        .limit(20)
+        .all()
+    )
     history = []
     for q in queries:
         if q.response:
@@ -101,7 +116,11 @@ def get_ai_history(
                     question=q.question,
                     answer=resp.answer,
                     decision=resp.decision,
-                    verification_status=resp.decision if resp.decision in ["SUPPORTED", "CONTRADICTED", "INSUFFICIENT_EVIDENCE"] else "SUPPORTED",
+                    verification_status=(
+                        resp.decision
+                        if resp.decision in ["SUPPORTED", "CONTRADICTED", "INSUFFICIENT_EVIDENCE"]
+                        else "SUPPORTED"
+                    ),
                     confidence=resp.confidence,
                     processing_time=resp.processing_time,
                     configuration=resp.configuration,
@@ -111,3 +130,33 @@ def get_ai_history(
                 )
             )
     return history
+
+
+# ------------------------------------------------------------------ #
+#  GET /api/ai/sources/{response_id}                                 #
+# ------------------------------------------------------------------ #
+@router.get("/sources/{response_id}", response_model=List[EvidenceOut])
+def get_response_sources(
+    response_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Return the evidence sources used to generate a specific AI response.
+
+    Useful for citation display and audit: given the ``id`` returned by
+    ``POST /api/ai/query``, retrieve every evidence chunk that was fed
+    to the LLM for that answer.
+    """
+    resp = db.query(AIResponse).filter(AIResponse.id == response_id).first()
+    if not resp:
+        raise HTTPException(status_code=404, detail="AI response not found.")
+    return [
+        EvidenceOut(
+            document_id=e.document_id,
+            chunk_id=e.chunk_id,
+            similarity_score=e.similarity_score,
+            evidence_text=e.evidence_text,
+            source_type=e.source_type
+        )
+        for e in resp.evidences
+    ]

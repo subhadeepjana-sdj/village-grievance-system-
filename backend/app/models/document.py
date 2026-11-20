@@ -16,3 +16,9 @@ class Document(Base):
     effective_date = Column(String(50), nullable=True)
     uploaded_by = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    # RAG enhancement fields
+    file_hash = Column(String(64), nullable=True, unique=True, index=True)   # SHA-256 of file bytes — prevents duplicate indexing
+    status = Column(String(20), nullable=False, default="pending")            # pending | indexed | failed
+    chunks_count = Column(Integer, nullable=True, default=0)                  # number of Qdrant points created
+    indexed_at = Column(DateTime, nullable=True)                              # timestamp of last successful indexing

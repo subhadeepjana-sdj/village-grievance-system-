@@ -15,5 +15,11 @@ class DocumentOut(BaseModel):
     uploaded_by: Optional[str] = None
     created_at: datetime
 
+    # RAG enhancement fields
+    file_hash: Optional[str] = None
+    status: str = "pending"
+    chunks_count: Optional[int] = 0
+    indexed_at: Optional[datetime] = None
+
     class Config:
         from_attributes = True
