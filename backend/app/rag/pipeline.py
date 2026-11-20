@@ -6,6 +6,9 @@ from app.services.hybrid_retriever import hybrid_retriever
 from app.services.llm_service import llm_service
 from app.verification.correction.correction_controller import correction_controller
 from app.verification.correction.audit_logger import audit_logger
+from app.verification.abstention.abstention_engine import abstention_engine
+from app.verification.abstention.audit_logger import abstention_audit_logger
+from app.models.user import User
 from app.models.ai_records import AIQuery, AIResponse, Evidence, VerificationResult
 
 logger = logging.getLogger("uvicorn.error")
@@ -65,6 +68,7 @@ class RAGPipeline:
         # 3. Response Decision & Hallucination Verification                   #
         # ------------------------------------------------------------------ #
         corr_res = None
+        abst_res = None
         if configuration in ["baseline", "rag"]:
             answer = llm_res.get("answer", "")
             decision = "SHOW"
@@ -72,18 +76,19 @@ class RAGPipeline:
             confidence = 85.0 if evidence_list else 40.0
             ver_results = []
         else:
-            # Configuration C: Full RAG + CVE claim verification + bounded correction loop
-            corr_res = correction_controller.process_and_correct(
-                question=question,
+            # Configuration C: Full 3-Tier Abstention & CVE Verification Engine
+            user_obj = db.query(User).filter(User.id == user_id).first() if user_id else None
+            abst_res = abstention_engine.process_and_decide(
+                query=question,
                 evidence_pool=evidence_list,
-                initial_answer=llm_res.get("answer", ""),
-                db=db
+                db=db,
+                current_user=user_obj
             )
-            answer = corr_res["final_answer"]
-            decision = corr_res["action_taken"]
-            ver_status = corr_res["overall_status"]
-            confidence = corr_res["overall_confidence"]
-            final_report = corr_res["final_report"]
+            answer = abst_res["final_answer"]
+            decision = abst_res["decision"]
+            ver_status = abst_res["verification_status"]
+            confidence = abst_res["confidence"]
+            final_report = abst_res.get("final_report")
             ver_results = [
                 {
                     "claim": c.claim.claim_text,
@@ -93,7 +98,7 @@ class RAGPipeline:
                     "reason": c.reason
                 }
                 for c in final_report.claims
-            ]
+            ] if final_report else []
 
         proc_time = round(time.time() - start_time, 3)
 
@@ -142,6 +147,17 @@ class RAGPipeline:
         # 5. Persist detailed correction attempt audit logs
         if corr_res and "history" in corr_res:
             audit_logger.persist_correction_history(db, db_response.id, corr_res["history"])
+
+        # 6. Persist Abstention Event Audit Log if decision was ABSTAIN
+        if abst_res and abst_res.get("is_abstained"):
+            abstention_audit_logger.log_abstention_event(
+                db=db,
+                response_id=db_response.id,
+                intent=abst_res.get("intent", "GENERAL_KNOWLEDGE"),
+                reason=abst_res.get("abstention_reason", "INSUFFICIENT_EVIDENCE"),
+                missing_fields=abst_res.get("missing_fields"),
+                pre_generation_halt=abst_res.get("pre_generation_halt", False)
+            )
 
         db.commit()
 

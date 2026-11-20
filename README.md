@@ -93,7 +93,16 @@ An evidence-grounded AI question-answering and grievance management system for r
 - **Bounded Two-Retry State Machine (`correction/correction_controller.py`)**: Coordinates the iterative re-generation and re-verification cycle. If an answer cannot pass verification within 2 retries, automatically overrides with an unembellished, deterministic factual record directly from PostgreSQL.
 - **Evidence Preservation Safeguard**: Binds the original retrieved evidence pool across all retries, preventing vector search drift or stale record replacement.
 - **Full Database Audit History (`correction/audit_logger.py`)**: Persists every candidate draft, prompt directive, verification verdict, and latency into `ai_correction_logs` table for administrative transparency.
-- **Integrated RAG Pipeline (`rag/pipeline.py`)**: Replaces legacy placeholders, ensuring all citizen questions undergo autonomous claim verification, correction, and audit recording before response delivery.
+
+### Feature 6: Evidence-Grounded Abstention Mechanism
+- **Three-Tier Protection Layer**:
+  1. *Tier 1 (Pre-Generation Sufficiency)*: Detects intent and verifies whether required database fields exist *before* calling the LLM. If a mandatory field (e.g. `expected_resolution_date`) is `NULL`, halts pre-generation in $< 15\text{ms}$ and safely abstains.
+  2. *Tier 2 (Post-Generation CVE)*: Atomic claims are verified via DeBERTa-v3 cross-encoder ($p_E, p_C, p_N$). If $p_N \ge 0.60$ (neutral evidence), refuses to assume truth and treats as ungrounded.
+  3. *Tier 3 (Master Abstention Decision)*: Multi-factor decision policy checks source authority, document expiration, source conflicts, and composite confidence before presenting answers.
+- **Query Intent Analyzer (`abstention/query_analyzer.py`)**: Classifies citizen queries into intents (`RESOLUTION_TIMELINE`, `DEPARTMENT_INQUIRY`, `STATUS_CHECK`, `SCHEME_ELIGIBILITY`, `PROCEDURE_STEP`) and identifies required attributes.
+- **Evidence Sufficiency & Conflict Checker (`abstention/sufficiency_checker.py`)**: Pre-generation halts on missing required fields, non-existent grievance IDs, expired circulars, or conflicting departmental mandates.
+- **Citizen Authorization Guard**: Restricts access so citizens can only query their own grievance records, preventing private information leakage.
+- **Abstention Audit Logging (`abstention/audit_logger.py`)**: Records every abstention reason, missing fields list, and pre-generation bypass flag into `ai_abstention_logs`.
 
 ---
 
@@ -158,6 +167,11 @@ village-grievance-system/
 │   │   │   │   ├── prompt_builder.py    # Negative-constraint prompt generator
 │   │   │   │   ├── correction_controller.py # Bounded 2-retry state machine coordinator
 │   │   │   │   └── audit_logger.py      # Database audit trail persister
+│   │   │   ├── abstention/            # Feature 6: Evidence-Grounded Abstention Engine
+│   │   │   │   ├── query_analyzer.py    # Query intent & mandatory fields extractor
+│   │   │   │   ├── sufficiency_checker.py # Pre-generation evidence sufficiency & conflict checker
+│   │   │   │   ├── abstention_engine.py # Master 3-tier abstention decision engine
+│   │   │   │   └── audit_logger.py      # Abstention database logger & metrics aggregator
 │   │   │   └── evaluation/            # Academic evaluation datasets & metrics
 │   │   ├── hallucination/             # Core decision engine & confidence scoring
 │   │   └── evaluation/
@@ -170,7 +184,8 @@ village-grievance-system/
 │   │       ├── test_evidence.py       # DB verifier & evidence mapper unit tests (7 tests)
 │   │       ├── test_nli.py            # DeBERTa NLI inference & loader unit tests (5 tests)
 │   │       ├── test_confidence.py     # Confidence scorer & decision engine (8 tests)
-│   │       └── test_correction.py     # Correction prompt builder, controller & audit (7 tests)
+│   │       ├── test_correction.py     # Correction prompt builder, controller & audit (7 tests)
+│   │       └── test_abstention.py     # 3-tier abstention, intent, sufficiency & auth (10 tests)
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── frontend/
@@ -213,7 +228,7 @@ npm run dev
 
 ## 6. Running the Test Suites
 
-### All Verification Engine Unit Tests (35 tests)
+### All Verification Engine Unit Tests (45 tests)
 ```bash
 cd backend
 python -m unittest discover -s tests/verification -p "test_*.py" -v
@@ -224,6 +239,7 @@ Runs:
 - `test_nli.py`: 5 tests covering singleton model loading, entailment, contradiction, neutral / insufficient evidence, and batching.
 - `test_confidence.py`: 8 tests covering empirical composite confidence scoring, contradiction penalization, holistic confidence aggregation, and decision routing (`SHOW`, `CORRECT`, `ABSTAIN`).
 - `test_correction.py`: 7 tests covering negative-constraint prompt generation, deterministic fallback generation, immediate acceptance of valid answers, loop correction of contradicted departments/statuses, safe abstention, and database audit trail persistence.
+- `test_abstention.py`: 10 tests covering query intent analysis (`RESOLUTION_TIMELINE`, `DEPARTMENT_INQUIRY`, `STATUS_CHECK`), pre-generation sufficiency halts on `NULL` resolution dates, non-existent complaint IDs, expired circulars, conflicting departmental sources, citizen access authorization, and abstention audit event analytics.
 
 ### End-to-End Pipeline Regression Tests
 ```bash

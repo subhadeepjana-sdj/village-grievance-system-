@@ -36,6 +36,7 @@ class Complaint(Base):
     location = Column(String(200), nullable=True)
     status = Column(Enum(ComplaintStatus), default=ComplaintStatus.SUBMITTED, nullable=False)
     priority = Column(Enum(ComplaintPriority), default=ComplaintPriority.MEDIUM, nullable=False)
+    expected_resolution_date = Column(DateTime, nullable=True)  # Confirmed resolution date (or NULL if pending)
     file_path = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)

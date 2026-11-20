@@ -33,6 +33,7 @@ class AIResponse(Base):
     evidences = relationship("Evidence", back_populates="response", cascade="all, delete-orphan")
     verification_results = relationship("VerificationResult", back_populates="response", cascade="all, delete-orphan")
     correction_logs = relationship("AICorrectionLog", back_populates="response", cascade="all, delete-orphan")
+    abstention_logs = relationship("AIAbstentionLog", back_populates="response", cascade="all, delete-orphan")
 
 class Evidence(Base):
     __tablename__ = "evidences"
@@ -74,6 +75,20 @@ class AICorrectionLog(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     response = relationship("AIResponse", back_populates="correction_logs")
+
+class AIAbstentionLog(Base):
+    __tablename__ = "ai_abstention_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    response_id = Column(Integer, ForeignKey("ai_responses.id", ondelete="CASCADE"), nullable=True)
+    complaint_number = Column(String(50), nullable=True, index=True)
+    intent = Column(String(50), nullable=False)
+    abstention_reason = Column(String(100), nullable=False)
+    missing_fields = Column(Text, nullable=True)
+    pre_generation_halt = Column(Integer, default=0)  # 1 if halted at Tier 1 before LLM, 0 otherwise
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    response = relationship("AIResponse", back_populates="abstention_logs")
 
 class ResearchMetric(Base):
     __tablename__ = "research_metrics"
