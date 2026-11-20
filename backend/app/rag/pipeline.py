@@ -4,7 +4,8 @@ from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 from app.services.hybrid_retriever import hybrid_retriever
 from app.services.llm_service import llm_service
-from app.hallucination.decision_engine import decision_engine
+from app.verification.correction.correction_controller import correction_controller
+from app.verification.correction.audit_logger import audit_logger
 from app.models.ai_records import AIQuery, AIResponse, Evidence, VerificationResult
 
 logger = logging.getLogger("uvicorn.error")
@@ -63,6 +64,7 @@ class RAGPipeline:
         # ------------------------------------------------------------------ #
         # 3. Response Decision & Hallucination Verification                   #
         # ------------------------------------------------------------------ #
+        corr_res = None
         if configuration in ["baseline", "rag"]:
             answer = llm_res.get("answer", "")
             decision = "SHOW"
@@ -70,13 +72,28 @@ class RAGPipeline:
             confidence = 85.0 if evidence_list else 40.0
             ver_results = []
         else:
-            # Configuration C: full RAG + NLI verification + correction loop
-            decision_res = decision_engine.process_and_decide(question, evidence_list, llm_res)
-            answer = decision_res["answer"]
-            decision = decision_res["decision"]
-            ver_status = decision_res["verification_status"]
-            confidence = decision_res["confidence"]
-            ver_results = decision_res["verification_results"]
+            # Configuration C: Full RAG + CVE claim verification + bounded correction loop
+            corr_res = correction_controller.process_and_correct(
+                question=question,
+                evidence_pool=evidence_list,
+                initial_answer=llm_res.get("answer", ""),
+                db=db
+            )
+            answer = corr_res["final_answer"]
+            decision = corr_res["action_taken"]
+            ver_status = corr_res["overall_status"]
+            confidence = corr_res["overall_confidence"]
+            final_report = corr_res["final_report"]
+            ver_results = [
+                {
+                    "claim": c.claim.claim_text,
+                    "evidence": c.matched_evidence_text,
+                    "verification_result": c.status.value,
+                    "confidence": c.confidence,
+                    "reason": c.reason
+                }
+                for c in final_report.claims
+            ]
 
         proc_time = round(time.time() - start_time, 3)
 
@@ -121,6 +138,10 @@ class RAGPipeline:
                 reason=vr.get("reason", "")
             )
             db.add(db_vr)
+
+        # 5. Persist detailed correction attempt audit logs
+        if corr_res and "history" in corr_res:
+            audit_logger.persist_correction_history(db, db_response.id, corr_res["history"])
 
         db.commit()
 

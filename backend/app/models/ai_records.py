@@ -32,6 +32,7 @@ class AIResponse(Base):
     query = relationship("AIQuery", back_populates="response")
     evidences = relationship("Evidence", back_populates="response", cascade="all, delete-orphan")
     verification_results = relationship("VerificationResult", back_populates="response", cascade="all, delete-orphan")
+    correction_logs = relationship("AICorrectionLog", back_populates="response", cascade="all, delete-orphan")
 
 class Evidence(Base):
     __tablename__ = "evidences"
@@ -58,6 +59,21 @@ class VerificationResult(Base):
     reason = Column(Text, nullable=True)
 
     response = relationship("AIResponse", back_populates="verification_results")
+
+class AICorrectionLog(Base):
+    __tablename__ = "ai_correction_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    response_id = Column(Integer, ForeignKey("ai_responses.id", ondelete="CASCADE"), nullable=False)
+    attempt_number = Column(Integer, nullable=False, default=1)
+    candidate_answer = Column(Text, nullable=False)
+    status = Column(String(50), nullable=False)
+    action = Column(String(50), nullable=False)
+    confidence = Column(Float, default=0.0)
+    prompt_directive = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    response = relationship("AIResponse", back_populates="correction_logs")
 
 class ResearchMetric(Base):
     __tablename__ = "research_metrics"
