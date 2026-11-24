@@ -104,6 +104,17 @@ An evidence-grounded AI question-answering and grievance management system for r
 - **Citizen Authorization Guard**: Restricts access so citizens can only query their own grievance records, preventing private information leakage.
 - **Abstention Audit Logging (`abstention/audit_logger.py`)**: Records every abstention reason, missing fields list, and pre-generation bypass flag into `ai_abstention_logs`.
 
+### Feature 7: Evidence Provenance & Citation System
+- **Atomic Claim-to-Source Grounding**: Binds every factual proposition directly to its authoritative evidence origin (`COMPLAINT_RECORD`, `KNOWLEDGE_BASE`, or `SCHEME`), preventing fabricated citations and enabling end-to-end auditability.
+- **Two-Step Generation & Live Validation**:
+  1. *Citation Generator (`citation/citation_generator.py`)*: Extracts structured source metadata (`source_id`, `document_id`, `chunk_id`, `source_field`, `source_value`, `relevance_score`) strictly from verified evidence pools and injects inline sentence markers (`[1]`, `[2]`) into the answer.
+  2. *Citation Validator (`citation/citation_validator.py`)*: Cross-checks citations against authoritative PostgreSQL records; validates record existence, verifies normalized field-value consistency, detects stale cached records, and flags fabricated source identifiers.
+- **Persistent Provenance Schema (`ai_response_citations` table)**: Records `citation_label`, `source_type`, `source_id`, `claim_text`, `source_field`, `source_value`, `evidence_text`, `relevance_score`, `verified`, and human-readable `validation_message`.
+- **Integrated REST API Endpoints**:
+  - `POST /api/ai/query`: Returns structured `citations` array with validation verdicts alongside verified answers and confidence metrics.
+  - `GET /api/ai/responses/{response_id}/citations`: Dedicated endpoint for frontend citizen portals and audit dashboards to inspect claims and supporting evidence provenance.
+  - `GET /api/ai/sources/{response_id}`: Inspects raw Qdrant chunks and DB evidence fed to the LLM.
+
 ---
 
 ## 3. Technology Stack
@@ -172,6 +183,10 @@ village-grievance-system/
 │   │   │   │   ├── sufficiency_checker.py # Pre-generation evidence sufficiency & conflict checker
 │   │   │   │   ├── abstention_engine.py # Master 3-tier abstention decision engine
 │   │   │   │   └── audit_logger.py      # Abstention database logger & metrics aggregator
+│   │   │   ├── citation/              # Feature 7: Evidence Provenance & Citation Engine
+│   │   │   │   ├── schemas.py           # Citation, SourceReference & CitationReport models
+│   │   │   │   ├── citation_generator.py # Claim-to-source mapper & inline answer annotator
+│   │   │   │   └── citation_validator.py # Authoritative DB existence, field & staleness validator
 │   │   │   └── evaluation/            # Academic evaluation datasets & metrics
 │   │   ├── hallucination/             # Core decision engine & confidence scoring
 │   │   └── evaluation/
@@ -185,7 +200,8 @@ village-grievance-system/
 │   │       ├── test_nli.py            # DeBERTa NLI inference & loader unit tests (5 tests)
 │   │       ├── test_confidence.py     # Confidence scorer & decision engine (8 tests)
 │   │       ├── test_correction.py     # Correction prompt builder, controller & audit (7 tests)
-│   │       └── test_abstention.py     # 3-tier abstention, intent, sufficiency & auth (10 tests)
+│   │       ├── test_abstention.py     # 3-tier abstention, intent, sufficiency & auth (10 tests)
+│   │       └── test_citation.py       # Provenance, citation generator & live DB validator (18 tests)
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── frontend/
@@ -228,7 +244,7 @@ npm run dev
 
 ## 6. Running the Test Suites
 
-### All Verification Engine Unit Tests (45 tests)
+### All Verification Engine Unit Tests (63 tests)
 ```bash
 cd backend
 python -m unittest discover -s tests/verification -p "test_*.py" -v
@@ -240,6 +256,7 @@ Runs:
 - `test_confidence.py`: 8 tests covering empirical composite confidence scoring, contradiction penalization, holistic confidence aggregation, and decision routing (`SHOW`, `CORRECT`, `ABSTAIN`).
 - `test_correction.py`: 7 tests covering negative-constraint prompt generation, deterministic fallback generation, immediate acceptance of valid answers, loop correction of contradicted departments/statuses, safe abstention, and database audit trail persistence.
 - `test_abstention.py`: 10 tests covering query intent analysis (`RESOLUTION_TIMELINE`, `DEPARTMENT_INQUIRY`, `STATUS_CHECK`), pre-generation sufficiency halts on `NULL` resolution dates, non-existent complaint IDs, expired circulars, conflicting departmental sources, citizen access authorization, and abstention audit event analytics.
+- `test_citation.py`: 18 tests covering citation schema validation, complaint record citation generation, knowledge-base chunk citation, field mapping & value extraction, inline answer annotation, live complaint DB existence verification, field value match & staleness detection, fabricated source rejection, vector store citation deferral, and API schema (`CitationOut`) serialization.
 
 ### End-to-End Pipeline Regression Tests
 ```bash

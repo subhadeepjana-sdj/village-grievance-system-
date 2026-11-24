@@ -8,8 +8,10 @@ from app.verification.correction.correction_controller import correction_control
 from app.verification.correction.audit_logger import audit_logger
 from app.verification.abstention.abstention_engine import abstention_engine
 from app.verification.abstention.audit_logger import abstention_audit_logger
+from app.verification.citation.citation_generator import citation_generator
+from app.verification.citation.citation_validator import citation_validator
 from app.models.user import User
-from app.models.ai_records import AIQuery, AIResponse, Evidence, VerificationResult
+from app.models.ai_records import AIQuery, AIResponse, Evidence, VerificationResult, AIResponseCitation
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -159,6 +161,63 @@ class RAGPipeline:
                 pre_generation_halt=abst_res.get("pre_generation_halt", False)
             )
 
+        # ------------------------------------------------------------------ #
+        # 7. Feature 7 — Citation Generation & Validation                    #
+        # ------------------------------------------------------------------ #
+        citation_report = None
+        citation_dicts = []
+        final_report = abst_res.get("final_report") if abst_res else None
+        if final_report and configuration == "rag_verification":
+            try:
+                citation_report = citation_generator.generate(
+                    report=final_report,
+                    evidence_pool=evidence_list,
+                    response_id=db_response.id,
+                )
+                citation_report = citation_validator.validate(
+                    report=citation_report,
+                    db=db,
+                )
+                # Persist citations to DB
+                for cit in citation_report.citations:
+                    db_cit = AIResponseCitation(
+                        response_id=db_response.id,
+                        citation_label=cit.citation_id,
+                        source_type=cit.source.source_type.value,
+                        source_id=cit.source.source_id,
+                        document_id=cit.source.document_id,
+                        chunk_id=cit.source.chunk_id,
+                        claim_text=cit.claim_text,
+                        source_field=cit.source.source_field,
+                        source_value=cit.source.source_value,
+                        evidence_text=cit.evidence_text,
+                        page_number=cit.source.page_number,
+                        relevance_score=cit.relevance_score,
+                        verified=1 if cit.status.value == "VERIFIED" else 0,
+                        validation_status=cit.status.value,
+                        validation_message=cit.validation_message,
+                    )
+                    db.add(db_cit)
+                citation_dicts = [
+                    {
+                        "citation_id": c.citation_id,
+                        "claim_text": c.claim_text,
+                        "source_type": c.source.source_type.value,
+                        "source_id": c.source.source_id,
+                        "document_id": c.source.document_id,
+                        "chunk_id": c.source.chunk_id,
+                        "source_field": c.source.source_field,
+                        "source_value": c.source.source_value,
+                        "evidence_text": c.evidence_text,
+                        "relevance_score": c.relevance_score,
+                        "status": c.status.value,
+                        "validation_message": c.validation_message,
+                    }
+                    for c in citation_report.citations
+                ]
+            except Exception as e:
+                logger.warning("Citation generation failed: %s", e)
+
         db.commit()
 
         return {
@@ -172,7 +231,8 @@ class RAGPipeline:
             "configuration": configuration,
             "created_at": db_response.created_at,
             "evidences": evidence_list,
-            "verification_results": ver_results
+            "verification_results": ver_results,
+            "citations": citation_dicts,
         }
 
 

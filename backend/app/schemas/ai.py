@@ -26,6 +26,22 @@ class VerificationResultOut(BaseModel):
     reason: Optional[str] = None
 
 
+class CitationOut(BaseModel):
+    """Feature 7 — Structured citation in the API response."""
+    citation_id: str                       # e.g. "[1]"
+    claim_text: str
+    source_type: str                       # COMPLAINT_RECORD / KNOWLEDGE_BASE / SCHEME
+    source_id: str
+    document_id: Optional[int] = None
+    chunk_id: Optional[str] = None
+    source_field: Optional[str] = None
+    source_value: Optional[str] = None
+    evidence_text: Optional[str] = None
+    relevance_score: float = 0.0
+    status: str = "UNVERIFIED"             # VERIFIED / INVALID / STALE
+    validation_message: Optional[str] = None
+
+
 class AIQueryResponse(BaseModel):
     id: int
     question: str
@@ -38,3 +54,4 @@ class AIQueryResponse(BaseModel):
     created_at: datetime
     evidences: List[EvidenceOut] = []
     verification_results: List[VerificationResultOut] = []
+    citations: List[CitationOut] = []

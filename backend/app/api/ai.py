@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.api.auth import get_current_user, get_optional_current_user
 from app.models.user import User
-from app.models.ai_records import AIQuery, AIResponse
-from app.schemas.ai import AIQueryRequest, AIQueryResponse, EvidenceOut, VerificationResultOut
+from app.models.ai_records import AIQuery, AIResponse, AIResponseCitation
+from app.schemas.ai import AIQueryRequest, AIQueryResponse, EvidenceOut, VerificationResultOut, CitationOut
 from app.rag.pipeline import rag_pipeline
 
 router = APIRouter(prefix="/ai", tags=["AI Assistant & RAG"])
@@ -56,6 +56,24 @@ def ask_ai_assistant(
         for v in res.get("verification_results", [])
     ]
 
+    cit_outs = [
+        CitationOut(
+            citation_id=c.get("citation_id", ""),
+            claim_text=c.get("claim_text", ""),
+            source_type=c.get("source_type", "KNOWLEDGE_BASE"),
+            source_id=c.get("source_id", ""),
+            document_id=c.get("document_id"),
+            chunk_id=c.get("chunk_id"),
+            source_field=c.get("source_field"),
+            source_value=c.get("source_value"),
+            evidence_text=c.get("evidence_text"),
+            relevance_score=c.get("relevance_score", 0.0),
+            status=c.get("status", "UNVERIFIED"),
+            validation_message=c.get("validation_message"),
+        )
+        for c in res.get("citations", [])
+    ]
+
     return AIQueryResponse(
         id=res["id"],
         question=res["question"],
@@ -67,7 +85,8 @@ def ask_ai_assistant(
         configuration=res["configuration"],
         created_at=res["created_at"],
         evidences=ev_outs,
-        verification_results=vr_outs
+        verification_results=vr_outs,
+        citations=cit_outs
     )
 
 
@@ -159,4 +178,41 @@ def get_response_sources(
             source_type=e.source_type
         )
         for e in resp.evidences
+    ]
+
+
+# ------------------------------------------------------------------ #
+#  GET /api/ai/responses/{response_id}/citations                     #
+# ------------------------------------------------------------------ #
+@router.get("/responses/{response_id}/citations", response_model=List[CitationOut])
+def get_response_citations(
+    response_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Feature 7 — Return structured citations for a specific AI response.
+
+    Each citation links a factual claim in the answer to its
+    authoritative source (complaint record, knowledge-base document,
+    or government scheme), along with its validation status.
+    """
+    resp = db.query(AIResponse).filter(AIResponse.id == response_id).first()
+    if not resp:
+        raise HTTPException(status_code=404, detail="AI response not found.")
+    return [
+        CitationOut(
+            citation_id=c.citation_label,
+            claim_text=c.claim_text,
+            source_type=c.source_type,
+            source_id=c.source_id,
+            document_id=c.document_id,
+            chunk_id=c.chunk_id,
+            source_field=c.source_field,
+            source_value=c.source_value,
+            evidence_text=c.evidence_text,
+            relevance_score=c.relevance_score,
+            status=c.validation_status,
+            validation_message=c.validation_message,
+        )
+        for c in resp.citations
     ]

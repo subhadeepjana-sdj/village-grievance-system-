@@ -34,6 +34,7 @@ class AIResponse(Base):
     verification_results = relationship("VerificationResult", back_populates="response", cascade="all, delete-orphan")
     correction_logs = relationship("AICorrectionLog", back_populates="response", cascade="all, delete-orphan")
     abstention_logs = relationship("AIAbstentionLog", back_populates="response", cascade="all, delete-orphan")
+    citations = relationship("AIResponseCitation", back_populates="response", cascade="all, delete-orphan")
 
 class Evidence(Base):
     __tablename__ = "evidences"
@@ -89,6 +90,37 @@ class AIAbstentionLog(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     response = relationship("AIResponse", back_populates="abstention_logs")
+
+
+class AIResponseCitation(Base):
+    """
+    Feature 7 — Persistent citation record.
+
+    Each row links one claim in an AI response to the authoritative
+    evidence source that supports it.  The ``verified`` flag is set by
+    the Citation Validator after cross-checking against the database.
+    """
+    __tablename__ = "ai_response_citations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    response_id = Column(Integer, ForeignKey("ai_responses.id", ondelete="CASCADE"), nullable=False)
+    citation_label = Column(String(20), nullable=False)                 # e.g. "[1]"
+    source_type = Column(String(50), nullable=False)                    # COMPLAINT_RECORD / KNOWLEDGE_BASE / SCHEME
+    source_id = Column(String(100), nullable=False)                     # complaint number or document ref
+    document_id = Column(Integer, nullable=True)                        # FK → documents (optional)
+    chunk_id = Column(String(100), nullable=True)                       # Qdrant chunk ID
+    claim_text = Column(Text, nullable=False)                           # The factual claim being cited
+    source_field = Column(String(100), nullable=True)                   # DB column name (for complaint records)
+    source_value = Column(Text, nullable=True)                          # Authoritative value of the field
+    evidence_text = Column(Text, nullable=True)                         # Verbatim passage from the source
+    page_number = Column(Integer, nullable=True)                        # Page/section number
+    relevance_score = Column(Float, default=0.0)                        # Retrieval similarity score
+    verified = Column(Integer, default=0)                               # 1 = validated, 0 = unverified
+    validation_status = Column(String(50), default="UNVERIFIED")        # VERIFIED / INVALID / STALE / ACCESS_DENIED
+    validation_message = Column(Text, nullable=True)                    # Human-readable explanation
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    response = relationship("AIResponse", back_populates="citations")
 
 class ResearchMetric(Base):
     __tablename__ = "research_metrics"

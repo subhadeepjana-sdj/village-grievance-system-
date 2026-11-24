@@ -10,6 +10,7 @@ from app.models.ai_records import (
     VerificationResult,
     AICorrectionLog,
     AIAbstentionLog,
+    AIResponseCitation,
     ResearchMetric,
 )
 
@@ -29,5 +30,6 @@ __all__ = [
     "VerificationResult",
     "AICorrectionLog",
     "AIAbstentionLog",
+    "AIResponseCitation",
     "ResearchMetric",
 ]
