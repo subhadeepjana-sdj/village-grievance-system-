@@ -11,6 +11,7 @@ from app.models.ai_records import (
     AICorrectionLog,
     AIAbstentionLog,
     AIResponseCitation,
+    AIVerificationFeedback,
     ResearchMetric,
 )
 
@@ -31,5 +32,6 @@ __all__ = [
     "AICorrectionLog",
     "AIAbstentionLog",
     "AIResponseCitation",
+    "AIVerificationFeedback",
     "ResearchMetric",
 ]

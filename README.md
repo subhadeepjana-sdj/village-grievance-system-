@@ -115,6 +115,28 @@ An evidence-grounded AI question-answering and grievance management system for r
   - `GET /api/ai/responses/{response_id}/citations`: Dedicated endpoint for frontend citizen portals and audit dashboards to inspect claims and supporting evidence provenance.
   - `GET /api/ai/sources/{response_id}`: Inspects raw Qdrant chunks and DB evidence fed to the LLM.
 
+### Feature 8: AI Verification Center & Audit Platform
+- **Comprehensive 7-Question Inspection Engine**: Designed for administrators and researchers to inspect the entire verification lifecycle between initial LLM generation and final answer delivery:
+  1. *What did the LLM generate?* (Raw initial candidate generation prior to CVE checks)
+  2. *Which factual claims were extracted?* (Linguistic decomposition into atomic propositions)
+  3. *What evidence was retrieved?* (PostgreSQL records & Qdrant semantic chunks)
+  4. *Which claims were supported?* (Entailed assertions verified by DB lookup or NLI)
+  5. *Which claims were contradicted?* (Refuted assertions flagged with conflicting evidence)
+  6. *Which claims had insufficient evidence?* (Unsupported statements lacking evidence)
+  7. *What corrections were made?* (Negative directives, regeneration retries, delivered output)
+- **Role-Based Access Control (RBAC)**: Enforces strict administrative/researcher authorization across all verification inspection endpoints (`[UserRole.ADMIN, UserRole.PANCHAYAT_STAFF, UserRole.RESEARCHER]`), returning HTTP `403 Forbidden` for unauthorized citizen requests.
+- **Human-in-the-Loop Audit Feedback (`ai_verification_feedback` table)**: Allows officials to flag false contradictions, false entailments, or missed hallucinations for continuous NLI model calibration.
+- **Dedicated Administrative REST APIs**:
+  - `GET /api/admin/verification/overview`: Real-time dashboard statistics (total interactions, verified claims distribution, pass rate, avg confidence).
+  - `GET /api/admin/verification/interactions`: Paginated interaction browser with decision and keyword search filters.
+  - `GET /api/admin/verification/interactions/{id}`: Detailed 7-question drilldown payload.
+  - `GET /api/admin/verification/claims/{id}`: Deep claim inspection with rationale and linked citations.
+  - `GET /api/admin/verification/evidence/{id}`: Evidence chunk explorer with grounded claims mapping.
+  - `GET /api/admin/verification/corrections/{id}`: Multi-attempt regeneration history.
+  - `GET /api/admin/verification/reports`: Comparative academic evaluation metrics.
+  - `POST /api/admin/verification/feedback`: Human-in-the-loop audit feedback logging.
+- **Automated CI/CD Pipeline (`.github/workflows/ci.yml`)**: Continuous integration workflow validating Python 3.11 linting (Ruff), full 78-test verification suite, frontend TypeScript type-checking (`npx tsc --noEmit`), and Docker build validation.
+
 ---
 
 ## 3. Technology Stack
@@ -147,6 +169,7 @@ village-grievance-system/
 │   │   ├── config.py                  # Environment and system settings
 │   │   ├── api/                       # REST route handlers
 │   │   │   ├── ai.py                  # AI query, history, and source endpoints
+│   │   │   ├── verification_center.py # Feature 8: AI Verification Center 7-question endpoints
 │   │   │   ├── complaints.py          # Grievance CRUD and tracking
 │   │   │   ├── documents.py           # Document upload, dedup, delete, reindex
 │   │   │   └── auth.py                # JWT authentication and user management
@@ -201,7 +224,8 @@ village-grievance-system/
 │   │       ├── test_confidence.py     # Confidence scorer & decision engine (8 tests)
 │   │       ├── test_correction.py     # Correction prompt builder, controller & audit (7 tests)
 │   │       ├── test_abstention.py     # 3-tier abstention, intent, sufficiency & auth (10 tests)
-│   │       └── test_citation.py       # Provenance, citation generator & live DB validator (18 tests)
+│   │       ├── test_citation.py       # Provenance, citation generator & live DB validator (18 tests)
+│   │       └── test_verification_center.py # Feature 8: Verification Center 7-question inspection & RBAC (12 tests)
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── frontend/
@@ -244,7 +268,7 @@ npm run dev
 
 ## 6. Running the Test Suites
 
-### All Verification Engine Unit Tests (63 tests)
+### All Verification Engine Unit Tests (75 tests)
 ```bash
 cd backend
 python -m unittest discover -s tests/verification -p "test_*.py" -v
@@ -257,6 +281,7 @@ Runs:
 - `test_correction.py`: 7 tests covering negative-constraint prompt generation, deterministic fallback generation, immediate acceptance of valid answers, loop correction of contradicted departments/statuses, safe abstention, and database audit trail persistence.
 - `test_abstention.py`: 10 tests covering query intent analysis (`RESOLUTION_TIMELINE`, `DEPARTMENT_INQUIRY`, `STATUS_CHECK`), pre-generation sufficiency halts on `NULL` resolution dates, non-existent complaint IDs, expired circulars, conflicting departmental sources, citizen access authorization, and abstention audit event analytics.
 - `test_citation.py`: 18 tests covering citation schema validation, complaint record citation generation, knowledge-base chunk citation, field mapping & value extraction, inline answer annotation, live complaint DB existence verification, field value match & staleness detection, fabricated source rejection, vector store citation deferral, and API schema (`CitationOut`) serialization.
+- `test_verification_center.py`: 12 tests covering administrative overview statistics, paginated interactions listing with filters, the 7 core audit questions drilldown, claim detail with linked citations, evidence explorer with grounded claims, multi-attempt regeneration history, evaluation report retrieval, human-in-the-loop feedback submission, 404 error handling, and RBAC authorization barriers.
 
 ### End-to-End Pipeline Regression Tests
 ```bash

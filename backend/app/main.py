@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.database.session import engine, Base
 from app.database.seed_data import seed_database
-from app.api import auth, users, complaints, departments, documents, ai, admin, research
+from app.api import auth, users, complaints, departments, documents, ai, admin, research, verification_center
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("uvicorn.error")
@@ -40,6 +40,7 @@ app.include_router(departments.router, prefix=settings.API_V1_STR)
 app.include_router(documents.router, prefix=settings.API_V1_STR)
 app.include_router(ai.router, prefix=settings.API_V1_STR)
 app.include_router(admin.router, prefix=settings.API_V1_STR)
+app.include_router(verification_center.router, prefix=settings.API_V1_STR)
 app.include_router(research.router, prefix=settings.API_V1_STR)
 
 @app.on_event("startup")

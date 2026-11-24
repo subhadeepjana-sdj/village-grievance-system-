@@ -35,6 +35,7 @@ class AIResponse(Base):
     correction_logs = relationship("AICorrectionLog", back_populates="response", cascade="all, delete-orphan")
     abstention_logs = relationship("AIAbstentionLog", back_populates="response", cascade="all, delete-orphan")
     citations = relationship("AIResponseCitation", back_populates="response", cascade="all, delete-orphan")
+    feedback = relationship("AIVerificationFeedback", back_populates="response", cascade="all, delete-orphan")
 
 class Evidence(Base):
     __tablename__ = "evidences"
@@ -138,3 +139,26 @@ class ResearchMetric(Base):
     abstention_accuracy = Column(Float, nullable=False)
     avg_latency = Column(Float, nullable=False)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class AIVerificationFeedback(Base):
+    """
+    Feature 8 — Human-in-the-Loop Verification Feedback.
+
+    Allows administrators and researchers to audit, flag verification errors,
+    and record ground truth corrections for continuous model refinement.
+    """
+    __tablename__ = "ai_verification_feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    response_id = Column(Integer, ForeignKey("ai_responses.id", ondelete="CASCADE"), nullable=False)
+    claim_id = Column(Integer, ForeignKey("verification_results.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    feedback_type = Column(String(50), nullable=False)  # FALSE_CONTRADICTION / FALSE_ENTAILMENT / MISSED_HALLUCINATION / GENERAL
+    corrected_verdict = Column(String(50), nullable=True)  # SUPPORTED / CONTRADICTED / INSUFFICIENT_EVIDENCE
+    notes = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    response = relationship("AIResponse", back_populates="feedback")
+    user = relationship("User")
+    claim = relationship("VerificationResult")
