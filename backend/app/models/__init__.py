@@ -41,6 +41,12 @@ from app.models.model_config import (
     ConfigStatus,
     ConfigType,
 )
+from app.models.notification import (
+    Notification,
+    NotificationPreference,
+    NotificationCategory,
+    NotificationSeverity,
+)
 
 __all__ = [
     "Village",
@@ -80,4 +86,8 @@ __all__ = [
     "ConfigurationEvaluation",
     "ConfigStatus",
     "ConfigType",
+    "Notification",
+    "NotificationPreference",
+    "NotificationCategory",
+    "NotificationSeverity",
 ]

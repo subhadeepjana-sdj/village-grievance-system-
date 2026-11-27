@@ -8,7 +8,7 @@ from app.config import settings
 from app.database.session import engine, Base
 from app.database.mongodb import mongodb_service
 from app.database.seed_data import seed_database
-from app.api import auth, users, complaints, departments, documents, ai, admin, research, verification_center, knowledge_base, audit, feedback, model_config, media
+from app.api import auth, users, complaints, departments, documents, ai, admin, research, verification_center, knowledge_base, audit, feedback, model_config, media, notifications
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("uvicorn.error")
@@ -48,6 +48,7 @@ app.include_router(audit.router, prefix=settings.API_V1_STR)
 app.include_router(feedback.router, prefix=settings.API_V1_STR)
 app.include_router(model_config.router, prefix=settings.API_V1_STR)
 app.include_router(media.router, prefix=settings.API_V1_STR)
+app.include_router(notifications.router, prefix=settings.API_V1_STR)
 
 @app.on_event("startup")
 def startup_event():

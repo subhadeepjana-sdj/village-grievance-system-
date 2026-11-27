@@ -575,4 +575,133 @@ export const adminService = {
     const res = await api.put(`/admin/configs/${configType}/${configId}/approve`, { notes });
     return res.data;
   },
+
+  // Notifications & Alerts Centre
+  listNotifications: async (params?: {
+    filter?: string;
+    category?: string;
+    severity?: string;
+    search?: string;
+    date_from?: string;
+    date_to?: string;
+    include_dismissed?: boolean;
+    page?: number;
+    page_size?: number;
+  }): Promise<NotificationListResponse> => {
+    const res = await api.get<NotificationListResponse>('/admin/notifications', { params });
+    return res.data;
+  },
+
+  getNotificationUnreadCount: async (): Promise<NotificationUnreadCount> => {
+    const res = await api.get<NotificationUnreadCount>('/admin/notifications/unread-count');
+    return res.data;
+  },
+
+  setNotificationRead: async (id: string, is_read = true): Promise<NotificationItem> => {
+    const res = await api.patch<NotificationItem>(`/admin/notifications/${encodeURIComponent(id)}/read`, { is_read });
+    return res.data;
+  },
+
+  acknowledgeNotification: async (id: string): Promise<NotificationItem> => {
+    const res = await api.patch<NotificationItem>(`/admin/notifications/${encodeURIComponent(id)}/acknowledge`);
+    return res.data;
+  },
+
+  dismissNotification: async (id: string): Promise<NotificationItem> => {
+    const res = await api.patch<NotificationItem>(`/admin/notifications/${encodeURIComponent(id)}/dismiss`);
+    return res.data;
+  },
+
+  markAllNotificationsRead: async (): Promise<{ marked_read: number }> => {
+    const res = await api.patch<{ marked_read: number }>('/admin/notifications/mark-all-read');
+    return res.data;
+  },
+
+  scanNotificationSLA: async (): Promise<NotificationUnreadCount & { alerts_processed: number }> => {
+    const res = await api.post<NotificationUnreadCount & { alerts_processed: number }>('/admin/notifications/scan-sla');
+    return res.data;
+  },
+
+  getNotificationDigest: async (): Promise<DailyDigestSummary> => {
+    const res = await api.get<DailyDigestSummary>('/admin/notifications/digest');
+    return res.data;
+  },
+
+  getNotificationPreferences: async (): Promise<NotificationPreferences> => {
+    const res = await api.get<NotificationPreferences>('/admin/notifications/preferences');
+    return res.data;
+  },
+
+  updateNotificationPreferences: async (
+    payload: Partial<NotificationPreferences>
+  ): Promise<NotificationPreferences> => {
+    const res = await api.put<NotificationPreferences>('/admin/notifications/preferences', payload);
+    return res.data;
+  },
 };
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  category: string;
+  severity: 'CRITICAL' | 'WARNING' | 'INFO' | string;
+  recipient_id?: number;
+  recipient_role?: string;
+  related_complaint_id?: number;
+  related_complaint_number?: string;
+  group_key?: string;
+  occurrence_count: number;
+  action_url?: string;
+  action_label?: string;
+  metadata?: Record<string, any>;
+  is_read: boolean;
+  requires_action: boolean;
+  acknowledged_at?: string;
+  acknowledged_by?: string;
+  created_at: string;
+  updated_at?: string;
+  read_at?: string;
+  dismissed_at?: string;
+}
+
+export interface NotificationListResponse {
+  items: NotificationItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+  unread_count: number;
+  critical_count: number;
+  pending_action_count: number;
+}
+
+export interface NotificationUnreadCount {
+  unread_count: number;
+  critical_count: number;
+  pending_action_count: number;
+}
+
+export interface DailyDigestSummary {
+  generated_at: string;
+  pending_complaints: number;
+  overdue_complaints: number;
+  ai_verification_issues: number;
+  pending_feedback_reviews: number;
+  unread_notifications: number;
+  critical_unread_notifications: number;
+  highlights: string[];
+}
+
+export interface NotificationPreferences {
+  user_id: number;
+  enabled_categories: string[];
+  min_severity: 'INFO' | 'WARNING' | 'CRITICAL' | string;
+  in_app_enabled: boolean;
+  email_digest_enabled: boolean;
+  sms_critical_enabled: boolean;
+  smart_grouping_enabled: boolean;
+  auto_escalation_enabled: boolean;
+  escalation_sla_hours: number;
+  updated_at?: string;
+}

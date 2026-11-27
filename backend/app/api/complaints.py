@@ -10,6 +10,8 @@ from app.models.user import User, UserRole
 from app.models.department import Department
 from app.models.complaint import Complaint, ComplaintStatus, ComplaintPriority, ComplaintStatusHistory
 from app.schemas.complaint import ComplaintOut, ComplaintUpdate, ComplaintStatusHistoryOut
+from app.services.notification_service import notify_event
+from app.models.notification import NotificationCategory, NotificationSeverity
 from app.utils.file_upload import save_uploaded_file
 
 router = APIRouter(prefix="/complaints", tags=["Complaints"])
@@ -77,6 +79,53 @@ def create_complaint(
         "actor_role": current_user.role.value,
         "description": f"Complaint {complaint.complaint_number} created",
     })
+
+    # Emit Admin Notification (Complaint Received / High-Priority / Potential Duplicate)
+    is_urgent = p_enum in (ComplaintPriority.HIGH, ComplaintPriority.URGENT)
+    attachment_note = " Supporting evidence attached." if file_rel_path else ""
+    notify_event(
+        db,
+        title="High-priority complaint received" if is_urgent else "New complaint received",
+        message=f"{complaint.complaint_number} — {complaint.title} ({complaint.location or 'Village'}).{attachment_note}",
+        category=NotificationCategory.COMPLAINT.value,
+        severity=NotificationSeverity.CRITICAL.value if is_urgent else NotificationSeverity.INFO.value,
+        related_complaint_id=complaint.id,
+        related_complaint_number=complaint.complaint_number,
+        action_url=f"/track?id={complaint.complaint_number}",
+        action_label="View complaint",
+        requires_action=True,
+        group_key=f"complaint_new:{complaint.complaint_number}",
+        metadata={"priority": p_enum.value, "category": complaint.category},
+    )
+
+    recent_cutoff = datetime.datetime.utcnow() - datetime.timedelta(hours=24)
+    recent_similar = (
+        db.query(Complaint)
+        .filter(
+            Complaint.id != complaint.id,
+            Complaint.user_id == current_user.id,
+            Complaint.category == complaint.category,
+            Complaint.created_at >= recent_cutoff,
+        )
+        .first()
+    )
+    if recent_similar:
+        notify_event(
+            db,
+            title="Potential duplicate complaint detected",
+            message=(
+                f"{complaint.complaint_number} matches recent {complaint.category} grievance "
+                f"{recent_similar.complaint_number} from the same citizen within 24 hours."
+            ),
+            category=NotificationCategory.COMPLAINT.value,
+            severity=NotificationSeverity.WARNING.value,
+            related_complaint_id=complaint.id,
+            related_complaint_number=complaint.complaint_number,
+            action_url="/panchayat/dashboard",
+            action_label="Review duplicate",
+            requires_action=True,
+            group_key=f"duplicate_complaint:{complaint.complaint_number}",
+        )
 
     # Prepare response data
     return out
@@ -216,6 +265,42 @@ def update_complaint(
             "new_value": new_st,
             "description": update_data.remarks or f"Status updated to {new_st}",
         })
+        reopened = old_st in ("RESOLVED", "CLOSED") and new_st not in ("RESOLVED", "CLOSED")
+        if reopened:
+            notify_event(
+                db,
+                title="Resolved complaint reopened",
+                message=f"{c.complaint_number} was reopened from {old_st} to {new_st} by {current_user.name}.",
+                category=NotificationCategory.DEADLINE_ESCALATION.value,
+                severity=NotificationSeverity.WARNING.value,
+                related_complaint_id=c.id,
+                related_complaint_number=c.complaint_number,
+                action_url=f"/track?id={c.complaint_number}",
+                action_label="Review escalation",
+                requires_action=True,
+                group_key=f"reopened:{c.complaint_number}",
+            )
+        else:
+            notif_title = (
+                "Department marked complaint resolved"
+                if new_st in ("RESOLVED", "CLOSED")
+                else "Complaint assigned to department"
+                if update_data.department_id is not None and not update_data.status
+                else "Department submitted complaint update"
+            )
+            notify_event(
+                db,
+                title=notif_title,
+                message=f"{c.complaint_number} updated ({old_st} → {new_st}) by {current_user.name}.",
+                category=NotificationCategory.DEPARTMENT.value,
+                severity=NotificationSeverity.INFO.value,
+                related_complaint_id=c.id,
+                related_complaint_number=c.complaint_number,
+                action_url=f"/track?id={c.complaint_number}",
+                action_label="View complaint",
+                requires_action=False,
+                group_key=f"dept_update:{c.complaint_number}",
+            )
         return built
 
     # Cross-container fallback: update directly in MongoDB when complaint lives in MongoDB
@@ -256,6 +341,18 @@ def update_complaint(
                     "new_value": new_st,
                     "description": update_data.remarks or f"Status updated to {new_st}",
                 })
+                notify_event(
+                    db,
+                    title="Department marked complaint resolved" if new_st in ("RESOLVED", "CLOSED") else "Department submitted complaint update",
+                    message=f"{updated_doc.get('complaint_number', complaint_id)} updated ({old_st} → {new_st}) by {current_user.name}.",
+                    category=NotificationCategory.DEPARTMENT.value,
+                    severity=NotificationSeverity.INFO.value,
+                    related_complaint_number=updated_doc.get("complaint_number", complaint_id),
+                    action_url=f"/track?id={updated_doc.get('complaint_number', complaint_id)}",
+                    action_label="View complaint",
+                    requires_action=False,
+                    group_key=f"dept_update:{updated_doc.get('complaint_number', complaint_id)}",
+                )
                 return _mongo_doc_to_complaint_out(updated_doc)
 
     raise HTTPException(status_code=404, detail="Complaint not found")

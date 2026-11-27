@@ -37,19 +37,34 @@ const Navbar = () => {
       setAlertCount(0);
       return;
     }
-    api.get('/complaints')
-      .then((res) => {
-        if (!active || !Array.isArray(res.data)) return;
-        const openCount = res.data.filter(
-          (c) => c.status !== 'RESOLVED' && c.status !== 'CLOSED'
-        ).length;
-        setAlertCount(openCount);
-      })
-      .catch(() => {
-        if (active) setAlertCount(0);
-      });
+    const fetchCount = () => {
+      if (user.role !== 'CITIZEN') {
+        api.get('/admin/notifications/unread-count')
+          .then((res) => {
+            if (active && typeof res.data?.unread_count === 'number') {
+              setAlertCount(res.data.unread_count);
+            }
+          })
+          .catch(() => {});
+      } else {
+        api.get('/complaints')
+          .then((res) => {
+            if (!active || !Array.isArray(res.data)) return;
+            const openCount = res.data.filter(
+              (c) => c.status !== 'RESOLVED' && c.status !== 'CLOSED'
+            ).length;
+            setAlertCount(openCount);
+          })
+          .catch(() => {
+            if (active) setAlertCount(0);
+          });
+      }
+    };
+    fetchCount();
+    const timer = setInterval(fetchCount, 20000);
     return () => {
       active = false;
+      clearInterval(timer);
     };
   }, [user, location.pathname]);
 
@@ -92,6 +107,7 @@ const Navbar = () => {
   const getPageTitle = () => {
     const path = location.pathname;
     if (path === '/' || path === '/dashboard' || path === '/admin/dashboard') return 'Overview';
+    if (path.includes('/notifications')) return 'Notifications & Alerts';
     if (path.includes('/ai-monitoring')) return 'Live Monitoring';
     if (path.includes('/citizen/dashboard')) return 'Citizen Portal';
     if (path.includes('/panchayat')) return 'Panchayat Operations';
@@ -148,11 +164,11 @@ const Navbar = () => {
         {/* Right: Notifications, Settings, Profile */}
         <div className="flex items-center gap-4 shrink-0">
           
-          {/* Notification Bell showing live active grievance count */}
+          {/* Notification Bell showing live unread / active count */}
           <Link 
-            to={user.role === 'CITIZEN' ? '/citizen/dashboard' : '/panchayat/dashboard'} 
+            to={user.role === 'CITIZEN' ? '/citizen/dashboard' : '/admin/notifications'} 
             className="relative p-2 rounded-full text-[#1A202C] hover:text-[#0047BA] hover:bg-white/80 transition"
-            title={`${alertCount} Active Grievance Alerts`}
+            title={user.role === 'CITIZEN' ? `${alertCount} Active Complaints` : `${alertCount} Unread Notifications`}
           >
             <Bell className="w-5 h-5" />
             {alertCount > 0 && (

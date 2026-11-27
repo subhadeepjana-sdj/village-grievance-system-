@@ -37,6 +37,8 @@ class MongoDBService:
         "ai_traces",
         "ai_feedback",
         "audit_events",
+        "notifications",
+        "notification_preferences",
     )
 
     def __init__(self):
@@ -67,6 +69,9 @@ class MongoDBService:
             db["ai_traces"].create_index([("created_at", DESCENDING)])
             db["ai_feedback"].create_index("feedback_id")
             db["audit_events"].create_index([("created_at", DESCENDING)])
+            db["notifications"].create_index("id", unique=True)
+            db["notifications"].create_index([("created_at", DESCENDING)])
+            db["notification_preferences"].create_index("user_id", unique=True)
 
             self.client = client
             self.db = db
@@ -350,6 +355,63 @@ class MongoDBService:
         except Exception as exc:
             logger.warning("MongoDB log_audit_event failed: %s", exc)
             return False
+
+    # ------------------------------------------------------------------ #
+    #  5b. Notifications & Preferences                                    #
+    # ------------------------------------------------------------------ #
+
+    def upsert_notification(self, notif_doc: Dict[str, Any]) -> bool:
+        if not self.connected or self.db is None or not notif_doc.get("id"):
+            return False
+        try:
+            payload = {**notif_doc, "synced_at": datetime.datetime.now(datetime.UTC)}
+            self.db["notifications"].update_one(
+                {"id": notif_doc["id"]},
+                {"$set": payload},
+                upsert=True,
+            )
+            return True
+        except Exception as exc:
+            logger.warning("MongoDB upsert_notification failed: %s", exc)
+            return False
+
+    def list_notifications(self) -> List[Dict[str, Any]]:
+        docs = self._iter_collection("notifications")
+        docs.sort(key=lambda d: str(d.get("created_at") or ""), reverse=True)
+        return docs
+
+    def get_notification(self, notif_id: str) -> Optional[Dict[str, Any]]:
+        if not self.connected or self.db is None or not notif_id:
+            return None
+        try:
+            return self.db["notifications"].find_one({"id": notif_id}, {"_id": 0})
+        except Exception as exc:
+            logger.warning("MongoDB get_notification failed: %s", exc)
+            return None
+
+    def upsert_notification_preference(self, pref_doc: Dict[str, Any]) -> bool:
+        if not self.connected or self.db is None or pref_doc.get("user_id") is None:
+            return False
+        try:
+            payload = {**pref_doc, "synced_at": datetime.datetime.now(datetime.UTC)}
+            self.db["notification_preferences"].update_one(
+                {"user_id": pref_doc["user_id"]},
+                {"$set": payload},
+                upsert=True,
+            )
+            return True
+        except Exception as exc:
+            logger.warning("MongoDB upsert_notification_preference failed: %s", exc)
+            return False
+
+    def get_notification_preference(self, user_id: int) -> Optional[Dict[str, Any]]:
+        if not self.connected or self.db is None:
+            return None
+        try:
+            return self.db["notification_preferences"].find_one({"user_id": user_id}, {"_id": 0})
+        except Exception as exc:
+            logger.warning("MongoDB get_notification_preference failed: %s", exc)
+            return None
 
     # ------------------------------------------------------------------ #
     #  6. Diagnostics & Health                                            #

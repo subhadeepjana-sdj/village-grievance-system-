@@ -21,6 +21,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import ResearchDashboard from './pages/ResearchDashboard';
 import CitizenServicesPage from './pages/citizen/CitizenServicesPage';
 import AIMonitoringPage from './pages/admin/AIMonitoringPage';
+import NotificationsPage from './pages/admin/NotificationsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,6 +54,8 @@ function AppRoutes() {
       <Route path="/ai-assistant" element={<AiAssistantPage />} />
       <Route path="/research" element={<ResearchDashboard />} />
       <Route path="/admin/ai-monitoring" element={<AIMonitoringPage />} />
+      <Route path="/admin/notifications" element={<NotificationsPage />} />
+      <Route path="/notifications" element={<NotificationsPage />} />
 
       {/* Specialized Dashboards */}
       <Route path="/citizen/dashboard" element={<CitizenDashboard />} />

@@ -6,6 +6,8 @@ from app.database.mongodb import mongodb_service
 from app.models.user import User, UserRole
 from app.schemas.auth import LoginRequest, RegisterRequest, Token
 from app.schemas.user import UserOut
+from app.services.notification_service import record_failed_login, clear_failed_logins, notify_event
+from app.models.notification import NotificationCategory, NotificationSeverity
 from app.utils.security import verify_password, get_password_hash, create_access_token, decode_access_token
 from fastapi.security import OAuth2PasswordBearer
 
@@ -108,6 +110,18 @@ def register(user_in: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     _mirror_user_to_mongo(user)
+    if user.role != UserRole.CITIZEN:
+        notify_event(
+            db,
+            title="Privileged role account created",
+            message=f"New account '{user.email}' registered with role {user.role.value}.",
+            category=NotificationCategory.SECURITY.value,
+            severity=NotificationSeverity.INFO.value,
+            action_url="/admin/ai-monitoring",
+            action_label="Review security event",
+            requires_action=False,
+            group_key=f"security:role_created:{user.email}",
+        )
     return user
 
 @router.post("/login", response_model=Token)
@@ -116,11 +130,13 @@ def login(login_in: LoginRequest, db: Session = Depends(get_db)):
     if not user:
         user = _sync_user_from_mongo(login_in.email, db)
     if not user or not verify_password(login_in.password, user.password_hash):
+        record_failed_login(db, login_in.email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password."
         )
 
+    clear_failed_logins(login_in.email)
     _mirror_user_to_mongo(user)
     access_token = create_access_token(
         data={"sub": str(user.id), "email": user.email, "role": user.role.value, "user_id": user.id}

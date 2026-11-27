@@ -25,6 +25,8 @@ from sqlalchemy import func
 from app.database.session import get_db
 from app.database.mongodb import mongodb_service
 from app.api.auth import get_current_user
+from app.services.notification_service import notify_event
+from app.models.notification import NotificationCategory, NotificationSeverity
 from app.models.user import User, UserRole
 from app.models.ai_records import AIResponse, AIQuery, Evidence, VerificationResult
 from app.models.feedback import (
@@ -104,6 +106,27 @@ def submit_feedback(
         "actor_role": current_user.role.value,
         "description": f"Feedback submitted ({feedback.feedback_type})",
     })
+    if feedback.feedback_type in ("INCORRECT", "MISLEADING"):
+        issue_count = (
+            db.query(AIFeedback)
+            .filter(
+                AIFeedback.response_id == payload.response_id,
+                AIFeedback.feedback_type.in_(["INCORRECT", "MISLEADING"]),
+            )
+            .count()
+        )
+        is_recurring = issue_count >= 2
+        notify_event(
+            db,
+            title="Recurring AI error reported by multiple users" if is_recurring else "Citizen reported incorrect AI response",
+            message=f"Response #AI-{payload.response_id} flagged as {feedback.feedback_type}. Pending admin root-cause review.",
+            category=NotificationCategory.AI_FEEDBACK.value,
+            severity=NotificationSeverity.CRITICAL.value if is_recurring else NotificationSeverity.WARNING.value,
+            action_url="/admin/ai-monitoring",
+            action_label="Review AI feedback",
+            requires_action=True,
+            group_key=f"ai_feedback:resp:{payload.response_id}",
+        )
     return feedback
 
 
@@ -353,4 +376,15 @@ def review_feedback(
         "actor_role": current_user.role.value,
         "description": f"Feedback reviewed (root_cause={payload.root_cause.value}, status={feedback.status})",
     })
+    notify_event(
+        db,
+        title="AI feedback review completed",
+        message=f"Feedback #{feedback.id} resolved under root cause {payload.root_cause.value} by {current_user.name}.",
+        category=NotificationCategory.AI_FEEDBACK.value,
+        severity=NotificationSeverity.INFO.value,
+        action_url="/admin/ai-monitoring",
+        action_label="Open AI Verification Center",
+        requires_action=False,
+        group_key=f"ai_feedback_reviewed:{feedback.id}",
+    )
     return feedback

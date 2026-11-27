@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import api from "../api/client";
 import GeoCivicLogo from "./GeoCivicLogo";
 
 // ─── Crisp SVG Icons ──────────────────────────────────────────
@@ -168,7 +169,7 @@ const NAVIGATION_SECTIONS = [
     items: [
       { name: "Dashboard",              label: "Dashboard",              to: "/admin/dashboard",     Icon: DashboardIcon },
       { name: "Live Monitoring",        label: "Live Monitoring",        to: "/admin/ai-monitoring", Icon: LiveMonitorIcon },
-      { name: "Notifications & Alerts", label: "Notifications & Alerts", to: "/panchayat/dashboard", Icon: AlertsIcon },
+      { name: "Notifications & Alerts", label: "Notifications & Alerts", to: "/admin/notifications", Icon: AlertsIcon },
     ]
   },
   {
@@ -243,6 +244,7 @@ const Sidebar = () => {
       if (path.includes("/citizen/services")) return "Village Services";
       return "Citizen Dashboard";
     }
+    if (path === "/admin/notifications" || path === "/notifications") return "Notifications & Alerts";
     if (path === "/admin/ai-monitoring") return "Live Monitoring";
     if (path === "/panchayat/dashboard") return "Complaints";
     if (path === "/track") return "Track Grievance";
@@ -256,10 +258,34 @@ const Sidebar = () => {
 
   // 1. Unified State: Single activeTab state variable tracking the active item globally
   const [activeTab, setActiveTab] = useState(() => resolveActiveTab(window.location.pathname, user?.role === "CITIZEN"));
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     setActiveTab(resolveActiveTab(location.pathname, isCitizen));
   }, [location.pathname, isCitizen]);
+
+  useEffect(() => {
+    if (!user || isCitizen) {
+      setUnreadNotifications(0);
+      return;
+    }
+    let mounted = true;
+    const loadUnread = () => {
+      api.get("/admin/notifications/unread-count")
+        .then((res) => {
+          if (mounted && typeof res.data?.unread_count === "number") {
+            setUnreadNotifications(res.data.unread_count);
+          }
+        })
+        .catch(() => {});
+    };
+    loadUnread();
+    const timer = setInterval(loadUnread, 20000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [user, isCitizen, location.pathname]);
 
   return (
     <aside style={{
@@ -395,7 +421,7 @@ const Sidebar = () => {
                   <span style={{ flex: 1, paddingRight: "8px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {item.label}
                   </span>
-                  {item.badge && (
+                  {(item.badge || (item.name === "Notifications & Alerts" && unreadNotifications > 0)) && (
                     <span style={{
                       marginRight: "14px",
                       background: isMatch ? "#FF8A00" : "#F59E0B",
@@ -403,7 +429,7 @@ const Sidebar = () => {
                       fontSize: "10px", fontWeight: 800,
                       padding: "1px 6px", borderRadius: "9999px"
                     }}>
-                      {item.badge}
+                      {item.name === "Notifications & Alerts" ? unreadNotifications : item.badge}
                     </span>
                   )}
                 </Link>

@@ -13,6 +13,8 @@ from app.verification.citation.citation_validator import citation_validator
 from app.models.user import User
 from app.models.ai_records import AIQuery, AIResponse, Evidence, VerificationResult, AIResponseCitation
 from app.database.mongodb import mongodb_service
+from app.services.notification_service import notify_event
+from app.models.notification import NotificationCategory, NotificationSeverity
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -256,6 +258,47 @@ class RAGPipeline:
                 "reason": abst_res.get("abstention_reason") if abst_res else None,
             },
         })
+
+        # Emit AI Intelligence alert when contradiction, abstention, retrieval miss, or low confidence occurs
+        dec_upper = str(decision).upper()
+        if dec_upper in ("CORRECT", "CONTRADICTED"):
+            notify_event(
+                db,
+                title="AI contradiction detected & intercepted",
+                message=f"Query #AI-{db_response.id}: NLI engine intercepted contradicted claims and applied safe correction.",
+                category=NotificationCategory.AI_INTELLIGENCE.value,
+                severity=NotificationSeverity.CRITICAL.value,
+                action_url="/admin/ai-monitoring",
+                action_label="Open AI Verification Center",
+                requires_action=True,
+                group_key=f"ai_contradiction:{db_response.id}",
+                metadata={"response_id": db_response.id, "confidence": confidence},
+            )
+        elif dec_upper in ("ABSTAIN", "INSUFFICIENT_EVIDENCE"):
+            notify_event(
+                db,
+                title="AI abstained (insufficient evidence)" if evidence_list else "Knowledge retrieval failure / abstention",
+                message=f"Query #AI-{db_response.id} ('{question[:80]}') safely abstained due to insufficient KB support.",
+                category=NotificationCategory.AI_INTELLIGENCE.value,
+                severity=NotificationSeverity.WARNING.value if not evidence_list else NotificationSeverity.INFO.value,
+                action_url="/admin/ai-monitoring",
+                action_label="Open AI Verification Center",
+                requires_action=not evidence_list,
+                group_key=f"ai_abstain:{db_response.id}",
+                metadata={"response_id": db_response.id, "evidence_count": len(evidence_list)},
+            )
+        elif confidence < 65.0:
+            notify_event(
+                db,
+                title="Low-confidence AI verification response",
+                message=f"Query #AI-{db_response.id} returned confidence {confidence:.1f}% below 65% threshold.",
+                category=NotificationCategory.AI_INTELLIGENCE.value,
+                severity=NotificationSeverity.WARNING.value,
+                action_url="/admin/ai-monitoring",
+                action_label="Open AI Verification Center",
+                requires_action=True,
+                group_key=f"ai_low_conf:{db_response.id}",
+            )
 
         return result_payload
 

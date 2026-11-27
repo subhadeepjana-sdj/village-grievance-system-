@@ -29,6 +29,8 @@ from sqlalchemy import func
 from app.database.session import get_db
 from app.database.mongodb import mongodb_service
 from app.api.auth import get_current_user
+from app.services.notification_service import notify_event
+from app.models.notification import NotificationCategory, NotificationSeverity
 from app.models.user import User, UserRole
 from app.models.document import Document
 from app.models.knowledge_base import (
@@ -312,6 +314,17 @@ def approve_version(
         "actor_role": current_user.role.value,
         "description": f"Published KB version {version.id}",
     })
+    notify_event(
+        db,
+        title="Document version approved and published",
+        message=f"Document #{version.document_id} v{version.version_number} approved and published by {current_user.name}.",
+        category=NotificationCategory.KNOWLEDGE_BASE.value,
+        severity=NotificationSeverity.INFO.value,
+        action_url="/knowledge-base",
+        action_label="Open Knowledge Base",
+        requires_action=False,
+        group_key=f"kb_publish:{version.id}",
+    )
     return version
 
 
@@ -369,6 +382,17 @@ def reject_version(
         "actor_role": current_user.role.value,
         "description": f"Rejected KB version {version.id}: {body.reason}",
     })
+    notify_event(
+        db,
+        title="Knowledge base version rejected",
+        message=f"Document #{version.document_id} v{version.version_number} was rejected: {body.reason}",
+        category=NotificationCategory.KNOWLEDGE_BASE.value,
+        severity=NotificationSeverity.WARNING.value,
+        action_url="/knowledge-base",
+        action_label="Open Knowledge Base",
+        requires_action=True,
+        group_key=f"kb_reject:{version.id}",
+    )
     return version
 
 

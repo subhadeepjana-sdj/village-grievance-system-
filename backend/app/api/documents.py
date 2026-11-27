@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.database.mongodb import mongodb_service
 from app.api.auth import get_current_user
+from app.services.notification_service import notify_event
+from app.models.notification import NotificationCategory, NotificationSeverity
 from app.models.user import User, UserRole
 from app.models.document import Document
 from app.schemas.document import DocumentOut
@@ -92,6 +94,17 @@ def upload_document(
     except Exception as e:
         doc.status = "failed"
         db.commit()
+        notify_event(
+            db,
+            title="Knowledge Base document processing failed",
+            message=f"Document '{title}' failed extraction/indexing: {e}",
+            category=NotificationCategory.KNOWLEDGE_BASE.value,
+            severity=NotificationSeverity.CRITICAL.value,
+            action_url="/knowledge-base",
+            action_label="Inspect Knowledge Base",
+            requires_action=True,
+            group_key=f"kb_fail:{doc.id}",
+        )
         raise HTTPException(status_code=500, detail=f"Document saved but indexing failed: {e}")
 
     db.commit()
@@ -119,6 +132,17 @@ def upload_document(
         "actor_role": current_user.role.value,
         "description": f"Document '{doc.title}' uploaded & indexed ({doc.chunks_count} chunks)",
     })
+    notify_event(
+        db,
+        title="Knowledge base update completed",
+        message=f"Document '{doc.title}' uploaded and indexed ({doc.chunks_count} vector chunks) by {current_user.name}.",
+        category=NotificationCategory.KNOWLEDGE_BASE.value,
+        severity=NotificationSeverity.INFO.value,
+        action_url="/knowledge-base",
+        action_label="Inspect Knowledge Base",
+        requires_action=False,
+        group_key=f"kb_indexed:{doc.id}",
+    )
     return doc
 
 
