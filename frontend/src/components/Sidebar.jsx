@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import GeoCivicLogo from "./GeoCivicLogo";
@@ -208,24 +208,58 @@ const NAVIGATION_SECTIONS = [
   }
 ];
 
+const CITIZEN_NAVIGATION_SECTIONS = [
+  {
+    category: "CITIZEN PORTAL",
+    items: [
+      { name: "Citizen Dashboard", label: "Dashboard",        to: "/citizen/dashboard",    Icon: DashboardIcon },
+      { name: "File Grievance",    label: "File Grievance",   to: "/submit",               Icon: ComplaintsIcon },
+      { name: "Track Grievance",   label: "Track Complaints", to: "/track",                Icon: TrackIcon },
+    ]
+  },
+  {
+    category: "SERVICES & AI HELP",
+    items: [
+      { name: "AI Assistant",      label: "AI Assistant",     to: "/ai-assistant",         Icon: FeedbackIcon },
+      { name: "Knowledge Base",    label: "Knowledge Base",   to: "/knowledge-base",       Icon: KnowledgeBaseIcon },
+      { name: "Village Services",  label: "Village Services", to: "/citizen/services",     Icon: DepartmentsIcon },
+    ]
+  }
+];
+
 const Sidebar = () => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const isCitizen = user?.role === "CITIZEN";
+  const sections = isCitizen ? CITIZEN_NAVIGATION_SECTIONS : NAVIGATION_SECTIONS;
+
+  const resolveActiveTab = (path, citizenMode) => {
+    if (citizenMode) {
+      if (path.includes("/submit") || path.includes("/complaints/new")) return "File Grievance";
+      if (path.includes("/track")) return "Track Grievance";
+      if (path.includes("/ai-assistant")) return "AI Assistant";
+      if (path.includes("/knowledge-base")) return "Knowledge Base";
+      if (path.includes("/citizen/services")) return "Village Services";
+      return "Citizen Dashboard";
+    }
+    if (path === "/admin/ai-monitoring") return "Live Monitoring";
+    if (path === "/panchayat/dashboard") return "Complaints";
+    if (path === "/track") return "Track Grievance";
+    if (path === "/department/dashboard") return "Departments & Escalations";
+    if (path === "/research") return "Reports & Analytics";
+    if (path === "/research/dashboard") return "Experiments & Model Comparison";
+    if (path === "/knowledge-base") return "Knowledge Base";
+    if (path === "/ai-assistant") return "AI Feedback & Error Review";
+    return "Dashboard";
+  };
 
   // 1. Unified State: Single activeTab state variable tracking the active item globally
-  const [activeTab, setActiveTab] = useState(() => {
-    const path = window.location.pathname;
-    if (path === '/admin/ai-monitoring') return 'Live Monitoring';
-    if (path === '/panchayat/dashboard') return 'Complaints';
-    if (path === '/track') return 'Track Grievance';
-    if (path === '/department/dashboard') return 'Departments & Escalations';
-    if (path === '/research') return 'Reports & Analytics';
-    if (path === '/research/dashboard') return 'Experiments & Model Comparison';
-    if (path === '/knowledge-base') return 'Knowledge Base';
-    if (path === '/ai-assistant') return 'AI Feedback & Error Review';
-    return 'Dashboard';
-  });
+  const [activeTab, setActiveTab] = useState(() => resolveActiveTab(window.location.pathname, user?.role === "CITIZEN"));
+
+  useEffect(() => {
+    setActiveTab(resolveActiveTab(location.pathname, isCitizen));
+  }, [location.pathname, isCitizen]);
 
   return (
     <aside style={{
@@ -276,7 +310,7 @@ const Sidebar = () => {
             border: "1px solid rgba(56, 189, 248, 0.3)",
             padding: "3px 8px", borderRadius: "6px"
           }}>
-            ADMINISTRATION & AI RESEARCH
+            {isCitizen ? "CITIZEN PORTAL & SERVICES" : "ADMINISTRATION & AI RESEARCH"}
           </div>
         </div>
       </div>
@@ -291,7 +325,7 @@ const Sidebar = () => {
         }}
         className="gis-sidebar-scroll"
       >
-        {NAVIGATION_SECTIONS.map((section, sIdx) => (
+        {sections.map((section, sIdx) => (
           <div key={section.category} style={{ marginTop: sIdx === 0 ? "4px" : "10px" }}>
             
             {/* Category Header */}

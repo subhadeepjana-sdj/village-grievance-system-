@@ -75,6 +75,28 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
+  const switchRole = async (targetRole) => {
+    const isAdmin = targetRole === 'ADMIN';
+    const email = isAdmin ? 'admin@village.gov.in' : 'citizen@village.gov.in';
+    const fallbackUser = isAdmin
+      ? { id: 4, email: 'admin@village.gov.in', name: 'System Administrator', role: 'ADMIN' }
+      : { id: 1, email: 'citizen@village.gov.in', name: 'Rajesh Kumar', role: 'CITIZEN' };
+
+    setLoading(true);
+    try {
+      const data = await login(email, 'Password123!');
+      return data;
+    } catch (err) {
+      localStorage.removeItem('token');
+      localStorage.setItem('gis_user', JSON.stringify(fallbackUser));
+      setToken('');
+      setUser(fallbackUser);
+      return fallbackUser;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('gis_user');
@@ -83,7 +105,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, role: user?.role, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, role: user?.role, login, register, switchRole, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

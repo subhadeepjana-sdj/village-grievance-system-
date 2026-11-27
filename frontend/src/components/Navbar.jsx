@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GeoCivicLogo from './GeoCivicLogo';
@@ -13,15 +13,51 @@ import {
   PlusCircle, 
   Sparkles, 
   FileText,
-  ShieldCheck 
+  ShieldCheck,
+  User as UserIcon,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, switchRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [switchingRole, setSwitchingRole] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const profileMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
+
+  const handleRoleSelect = async (targetRole) => {
+    setSwitchingRole(targetRole);
+    try {
+      await switchRole(targetRole);
+      setProfileMenuOpen(false);
+      navigate(targetRole === 'ADMIN' ? '/admin/dashboard' : '/citizen/dashboard');
+    } finally {
+      setSwitchingRole(null);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -32,6 +68,7 @@ const Navbar = () => {
   const getPageTitle = () => {
     const path = location.pathname;
     if (path === '/' || path === '/dashboard' || path === '/admin/dashboard') return 'Overview';
+    if (path.includes('/citizen/dashboard')) return 'Citizen Portal';
     if (path.includes('/panchayat')) return 'Panchayat Operations';
     if (path.includes('/department')) return 'Department Queue';
     if (path.includes('/submit')) return 'File Grievance';
@@ -107,26 +144,101 @@ const Navbar = () => {
             <Settings className="w-5 h-5" />
           </Link>
 
-          {/* User Profile matching Divya Prasad Admin */}
-          <div className="flex items-center gap-3 pl-2 sm:pl-3">
-            <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white shadow-xs bg-slate-200 shrink-0">
-              <img 
-                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80" 
-                alt={user.name || "Divya Prasad"} 
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            </div>
-            <div className="hidden sm:block leading-tight text-left">
-              <span className="font-bold text-xs text-[#1A202C] block">
-                {user.name || "Divya Prasad"}
-              </span>
-              <span className="text-[11px] text-[#64748B] block">
-                {user.role === 'ADMIN' ? 'Admin' : (user.role || 'Admin').toLowerCase().replace('_', ' ')}
-              </span>
-            </div>
+          {/* User Profile Switcher (Administrator / User) */}
+          <div className="relative pl-2 sm:pl-3" ref={profileMenuRef}>
+            <button
+              type="button"
+              onClick={() => setProfileMenuOpen((prev) => !prev)}
+              aria-expanded={profileMenuOpen}
+              aria-haspopup="menu"
+              className="flex items-center gap-3 px-2.5 py-1.5 rounded-xl hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-[#0047BA]/30 transition cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white shadow-xs bg-slate-200 shrink-0">
+                <img 
+                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80" 
+                  alt={user.name || "System Administrator"} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </div>
+              <div className="hidden sm:block leading-tight text-left">
+                <span className="font-bold text-xs text-[#1A202C] block">
+                  {user.name || "System Administrator"}
+                </span>
+                <span className="text-[11px] text-[#64748B] block capitalize">
+                  {user.role === 'ADMIN' ? 'Admin' : user.role === 'CITIZEN' ? 'User' : (user.role || 'Admin').toLowerCase().replace('_', ' ')}
+                </span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-[#64748B] transition-transform duration-150 ${profileMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {profileMenuOpen && (
+              <div
+                role="menu"
+                aria-label="Switch portal role"
+                className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-slate-200/80 py-2 z-50"
+              >
+                <div className="px-3.5 py-1.5 border-b border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">
+                    Select Portal Mode
+                  </p>
+                </div>
+
+                <div className="p-1.5 space-y-1">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={switchingRole !== null}
+                    onClick={() => handleRoleSelect('ADMIN')}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition cursor-pointer ${
+                      user.role === 'ADMIN'
+                        ? 'bg-[#E8F0FE] text-[#0047BA]'
+                        : 'text-[#1A202C] hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        user.role === 'ADMIN' ? 'bg-[#0047BA] text-white' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        <ShieldCheck className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold block">Administrator</span>
+                        <span className="text-[11px] text-[#64748B] block">Admin & AI Monitoring</span>
+                      </div>
+                    </div>
+                    {user.role === 'ADMIN' && <Check className="w-4 h-4 text-[#0047BA] shrink-0" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={switchingRole !== null}
+                    onClick={() => handleRoleSelect('CITIZEN')}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition cursor-pointer ${
+                      user.role === 'CITIZEN'
+                        ? 'bg-[#E8F0FE] text-[#0047BA]'
+                        : 'text-[#1A202C] hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        user.role === 'CITIZEN' ? 'bg-[#0047BA] text-white' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        <UserIcon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold block">User</span>
+                        <span className="text-[11px] text-[#64748B] block">Citizen Grievance Portal</span>
+                      </div>
+                    </div>
+                    {user.role === 'CITIZEN' && <Check className="w-4 h-4 text-[#0047BA] shrink-0" />}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>
