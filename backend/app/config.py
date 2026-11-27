@@ -20,6 +20,10 @@ class Settings(BaseSettings):
         f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
 
+    # MongoDB (for unstructured docs, uploaded evidence images, AI traces & audit archive)
+    MONGODB_URI: str = os.getenv("MONGODB_URI", "")
+    MONGODB_DB_NAME: str = os.getenv("MONGODB_DB_NAME", "village_grievance")
+
     # Security
     JWT_SECRET: str = os.getenv("JWT_SECRET", "super-secret-key-for-village-grievance-system-2026")
     ALGORITHM: str = "HS256"

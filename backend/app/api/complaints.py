@@ -4,6 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from app.database.session import get_db
+from app.database.mongodb import mongodb_service
 from app.api.auth import get_current_user
 from app.models.user import User, UserRole
 from app.models.complaint import Complaint, ComplaintStatus, ComplaintPriority, ComplaintStatusHistory
@@ -31,7 +32,7 @@ def create_complaint(
 ):
     file_rel_path = None
     if file and file.filename:
-        _, file_rel_path = save_uploaded_file(file, subfolder="complaints")
+        _, file_rel_path = save_uploaded_file(file, subfolder="complaints", use_mongo_url=True)
 
     c_num = generate_complaint_number()
     p_enum = ComplaintPriority[priority.upper()] if priority and priority.upper() in ComplaintPriority.__members__ else ComplaintPriority.MEDIUM
@@ -63,8 +64,33 @@ def create_complaint(
     db.add(history)
     db.commit()
 
+    # Mirror complaint snapshot & audit event to MongoDB (no-op if disabled)
+    out = _build_complaint_out(complaint)
+    mongodb_service.upsert_complaint({
+        "id": complaint.id,
+        "complaint_number": complaint.complaint_number,
+        "user_id": complaint.user_id,
+        "category": complaint.category,
+        "title": complaint.title,
+        "description": complaint.description,
+        "location": complaint.location,
+        "status": ComplaintStatus.SUBMITTED.value,
+        "priority": p_enum.value,
+        "file_path": file_rel_path,
+        "created_at": complaint.created_at,
+    })
+    mongodb_service.log_audit_event({
+        "event_type": "USER_ACTION",
+        "action": "CREATE",
+        "entity_type": "complaint",
+        "entity_id": complaint.complaint_number,
+        "actor_id": current_user.id,
+        "actor_role": current_user.role.value,
+        "description": f"Complaint {complaint.complaint_number} created",
+    })
+
     # Prepare response data
-    return _build_complaint_out(complaint)
+    return out
 
 @router.get("", response_model=List[ComplaintOut])
 def get_complaints(
@@ -155,6 +181,26 @@ def update_complaint(
     )
     db.add(history)
     db.commit()
+
+    mongodb_service.upsert_complaint({
+        "id": c.id,
+        "complaint_number": c.complaint_number,
+        "status": new_st,
+        "department_id": c.department_id,
+        "priority": c.priority.value if hasattr(c.priority, "value") else c.priority,
+        "updated_at": c.updated_at,
+    })
+    mongodb_service.log_audit_event({
+        "event_type": "ADMIN_ACTION",
+        "action": "UPDATE",
+        "entity_type": "complaint",
+        "entity_id": c.complaint_number,
+        "actor_id": current_user.id,
+        "actor_role": current_user.role.value,
+        "old_value": old_st,
+        "new_value": new_st,
+        "description": update_data.remarks or f"Status updated to {new_st}",
+    })
 
     return _build_complaint_out(c)
 

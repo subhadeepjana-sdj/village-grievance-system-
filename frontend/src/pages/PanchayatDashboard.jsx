@@ -388,6 +388,9 @@ export const PanchayatDashboard = () => {
       if (res?.data?.complaint_number) {
         newRecord.complaint_number = res.data.complaint_number;
       }
+      if (res?.data?.file_path && res.data.file_path.startsWith('/api/media/')) {
+        newRecord.evidence_photos = [res.data.file_path];
+      }
     } catch (apiErr) {
       console.warn('Saved locally to desk memory:', apiErr);
     }

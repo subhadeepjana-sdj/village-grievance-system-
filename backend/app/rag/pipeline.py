@@ -12,6 +12,7 @@ from app.verification.citation.citation_generator import citation_generator
 from app.verification.citation.citation_validator import citation_validator
 from app.models.user import User
 from app.models.ai_records import AIQuery, AIResponse, Evidence, VerificationResult, AIResponseCitation
+from app.database.mongodb import mongodb_service
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -220,7 +221,7 @@ class RAGPipeline:
 
         db.commit()
 
-        return {
+        result_payload = {
             "id": db_response.id,
             "question": question,
             "answer": answer,
@@ -234,6 +235,29 @@ class RAGPipeline:
             "verification_results": ver_results,
             "citations": citation_dicts,
         }
+
+        # Mirror complete AI pipeline trace into MongoDB (no-op if disabled)
+        mongodb_service.log_ai_trace({
+            "response_id": db_response.id,
+            "query_id": db_query.id,
+            "user_id": user_id,
+            "question": question,
+            "answer": answer,
+            "decision": decision,
+            "verification_status": ver_status,
+            "confidence": confidence,
+            "processing_time": proc_time,
+            "configuration": configuration,
+            "evidences": evidence_list,
+            "verification_results": ver_results,
+            "citations": citation_dicts,
+            "abstention": {
+                "is_abstained": bool(abst_res and abst_res.get("is_abstained")),
+                "reason": abst_res.get("abstention_reason") if abst_res else None,
+            },
+        })
+
+        return result_payload
 
 
 rag_pipeline = RAGPipeline()

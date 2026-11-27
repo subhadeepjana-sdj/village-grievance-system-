@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 
 from app.database.session import get_db
+from app.database.mongodb import mongodb_service
 from app.api.auth import get_current_user
 from app.models.user import User, UserRole
 from app.models.ai_records import AIResponse, AIQuery, Evidence, VerificationResult
@@ -84,6 +85,25 @@ def submit_feedback(
     db.add(feedback)
     db.commit()
     db.refresh(feedback)
+
+    mongodb_service.upsert_feedback({
+        "feedback_id": feedback.id,
+        "response_id": feedback.response_id,
+        "user_id": feedback.user_id,
+        "feedback_type": feedback.feedback_type,
+        "description": feedback.description,
+        "status": feedback.status,
+        "created_at": feedback.created_at,
+    })
+    mongodb_service.log_audit_event({
+        "event_type": "USER_ACTION",
+        "action": "CREATE",
+        "entity_type": "ai_feedback",
+        "entity_id": str(feedback.id),
+        "actor_id": current_user.id,
+        "actor_role": current_user.role.value,
+        "description": f"Feedback submitted ({feedback.feedback_type})",
+    })
     return feedback
 
 
@@ -311,4 +331,26 @@ def review_feedback(
     db.add(review)
     db.commit()
     db.refresh(feedback)
+
+    mongodb_service.upsert_feedback({
+        "feedback_id": feedback.id,
+        "status": feedback.status,
+        "latest_review": {
+            "admin_id": current_user.id,
+            "root_cause": payload.root_cause.value,
+            "corrective_action": payload.corrective_action,
+            "resolution_notes": payload.resolution_notes,
+            "resolved_at": resolved_at,
+        },
+        "updated_at": feedback.updated_at,
+    })
+    mongodb_service.log_audit_event({
+        "event_type": "ADMIN_ACTION",
+        "action": "REVIEW",
+        "entity_type": "ai_feedback",
+        "entity_id": str(feedback.id),
+        "actor_id": current_user.id,
+        "actor_role": current_user.role.value,
+        "description": f"Feedback reviewed (root_cause={payload.root_cause.value}, status={feedback.status})",
+    })
     return feedback

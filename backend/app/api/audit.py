@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, case, desc
 
 from app.database.session import get_db
+from app.database.mongodb import mongodb_service
 from app.api.auth import get_current_user
 from app.models.user import User, UserRole
 from app.models.audit import AuditEvent, AIRequestAudit
@@ -276,3 +277,14 @@ def get_audit_stats(
         unique_actors_today=unique_actors,
         top_actions=top_actions,
     )
+
+
+@router.get(
+    "/mongodb-status",
+    summary="MongoDB connection and collection document counts",
+)
+def get_mongodb_status(
+    current_user: User = Depends(get_current_user),
+):
+    _require_admin_or_researcher(current_user)
+    return mongodb_service.get_status()

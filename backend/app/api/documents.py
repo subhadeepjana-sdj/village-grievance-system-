@@ -4,6 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from app.database.session import get_db
+from app.database.mongodb import mongodb_service
 from app.api.auth import get_current_user
 from app.models.user import User, UserRole
 from app.models.document import Document
@@ -95,6 +96,29 @@ def upload_document(
 
     db.commit()
     db.refresh(doc)
+
+    mongodb_service.store_kb_document({
+        "document_id": doc.id,
+        "title": doc.title,
+        "department": doc.department,
+        "village": doc.village,
+        "source": doc.source,
+        "version": doc.version,
+        "file_hash": doc.file_hash,
+        "chunks_count": doc.chunks_count,
+        "status": doc.status,
+        "uploaded_by": doc.uploaded_by,
+        "indexed_at": doc.indexed_at,
+    })
+    mongodb_service.log_audit_event({
+        "event_type": "ADMIN_ACTION",
+        "action": "UPLOAD",
+        "entity_type": "document",
+        "entity_id": str(doc.id),
+        "actor_id": current_user.id,
+        "actor_role": current_user.role.value,
+        "description": f"Document '{doc.title}' uploaded & indexed ({doc.chunks_count} chunks)",
+    })
     return doc
 
 
@@ -194,4 +218,27 @@ def reindex_document(
 
     db.commit()
     db.refresh(doc)
+
+    mongodb_service.store_kb_document({
+        "document_id": doc.id,
+        "title": doc.title,
+        "department": doc.department,
+        "village": doc.village,
+        "source": doc.source,
+        "version": doc.version,
+        "file_hash": doc.file_hash,
+        "chunks_count": doc.chunks_count,
+        "status": doc.status,
+        "uploaded_by": doc.uploaded_by,
+        "indexed_at": doc.indexed_at,
+    })
+    mongodb_service.log_audit_event({
+        "event_type": "ADMIN_ACTION",
+        "action": "REINDEX",
+        "entity_type": "document",
+        "entity_id": str(doc.id),
+        "actor_id": current_user.id,
+        "actor_role": current_user.role.value,
+        "description": f"Document '{doc.title}' re-indexed ({doc.chunks_count} chunks)",
+    })
     return doc

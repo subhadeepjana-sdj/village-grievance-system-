@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 
 from app.database.session import get_db
+from app.database.mongodb import mongodb_service
 from app.api.auth import get_current_user
 from app.models.user import User, UserRole
 from app.models.document import Document
@@ -146,6 +147,18 @@ def upload_version(
     db.add(job)
     db.commit()
     db.refresh(version)
+
+    mongodb_service.store_kb_document({
+        "document_id": doc_id,
+        "version_id": version.id,
+        "version": f"v{version.version_number}",
+        "title": document.title,
+        "file_hash": version.file_hash,
+        "status": version.status,
+        "change_summary": version.change_summary,
+        "uploaded_by": current_user.id,
+        "created_at": version.created_at,
+    })
     return version
 
 
@@ -281,6 +294,24 @@ def approve_version(
 
     db.commit()
     db.refresh(version)
+
+    mongodb_service.store_kb_document({
+        "document_id": version.document_id,
+        "version_id": version.id,
+        "version": f"v{version.version_number}",
+        "status": version.status,
+        "approved_by": current_user.id,
+        "approved_at": version.approved_at,
+    })
+    mongodb_service.log_audit_event({
+        "event_type": "ADMIN_ACTION",
+        "action": "PUBLISH",
+        "entity_type": "document_version",
+        "entity_id": str(version.id),
+        "actor_id": current_user.id,
+        "actor_role": current_user.role.value,
+        "description": f"Published KB version {version.id}",
+    })
     return version
 
 
@@ -321,6 +352,23 @@ def reject_version(
     version.rejection_reason = body.reason
     db.commit()
     db.refresh(version)
+
+    mongodb_service.store_kb_document({
+        "document_id": version.document_id,
+        "version_id": version.id,
+        "version": f"v{version.version_number}",
+        "status": version.status,
+        "rejection_reason": version.rejection_reason,
+    })
+    mongodb_service.log_audit_event({
+        "event_type": "ADMIN_ACTION",
+        "action": "REJECT",
+        "entity_type": "document_version",
+        "entity_id": str(version.id),
+        "actor_id": current_user.id,
+        "actor_role": current_user.role.value,
+        "description": f"Rejected KB version {version.id}: {body.reason}",
+    })
     return version
 
 
@@ -369,6 +417,22 @@ def reindex_version(
     version.status = VersionStatus.PROCESSING.value
     db.commit()
     db.refresh(version)
+
+    mongodb_service.store_kb_document({
+        "document_id": version.document_id,
+        "version_id": version.id,
+        "version": f"v{version.version_number}",
+        "status": version.status,
+    })
+    mongodb_service.log_audit_event({
+        "event_type": "ADMIN_ACTION",
+        "action": "REINDEX",
+        "entity_type": "document_version",
+        "entity_id": str(version.id),
+        "actor_id": current_user.id,
+        "actor_role": current_user.role.value,
+        "description": f"Re-indexed KB version {version.id}",
+    })
     return version
 
 

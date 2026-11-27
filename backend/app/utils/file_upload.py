@@ -17,7 +17,11 @@ ALLOWED_MIME_TYPES = {
 }
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
-def save_uploaded_file(file: UploadFile, subfolder: str = "documents") -> Tuple[str, str]:
+def save_uploaded_file(
+    file: UploadFile,
+    subfolder: str = "documents",
+    use_mongo_url: bool = False,
+) -> Tuple[str, str]:
     # 1. Check extension
     filename = file.filename or "uploaded_file"
     ext = os.path.splitext(filename)[1].lower()
@@ -48,9 +52,25 @@ def save_uploaded_file(file: UploadFile, subfolder: str = "documents") -> Tuple[
     unique_name = f"{uuid.uuid4().hex}{ext}"
     target_path = os.path.join(target_dir, unique_name)
 
-    # 5. Save to disk securely
+    # 5. Save to disk (local/tmp cache)
     with open(target_path, "wb") as f:
         f.write(contents)
 
     rel_path = os.path.join("uploads", subfolder, unique_name).replace("\\", "/")
+
+    # 6. Persist binary artifact in MongoDB when connected
+    try:
+        from app.database.mongodb import mongodb_service
+
+        media_id = mongodb_service.store_media(
+            content=contents,
+            filename=filename,
+            content_type=content_type or "application/octet-stream",
+            subfolder=subfolder,
+        )
+        if media_id and use_mongo_url:
+            rel_path = f"/api/media/{media_id}"
+    except Exception:
+        pass
+
     return target_path, rel_path
