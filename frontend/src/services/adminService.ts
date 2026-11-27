@@ -477,6 +477,11 @@ export const adminService = {
     return res.data;
   },
 
+  getMongoDBStatus: async (): Promise<any> => {
+    const res = await api.get('/admin/audit/mongodb-status');
+    return res.data;
+  },
+
   // Feature 12 — Model & RAG Management APIs
   listModels: async (status?: string): Promise<ModelConfigItem[]> => {
     const res = await api.get<ModelConfigItem[]>('/admin/models', { params: { status } });

@@ -68,6 +68,7 @@ const Navbar = () => {
   const getPageTitle = () => {
     const path = location.pathname;
     if (path === '/' || path === '/dashboard' || path === '/admin/dashboard') return 'Overview';
+    if (path.includes('/ai-monitoring')) return 'Live Monitoring';
     if (path.includes('/citizen/dashboard')) return 'Citizen Portal';
     if (path.includes('/panchayat')) return 'Panchayat Operations';
     if (path.includes('/department')) return 'Department Queue';

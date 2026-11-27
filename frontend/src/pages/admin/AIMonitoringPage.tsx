@@ -1,16 +1,38 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { adminService, AdminStatistics } from '../../services/adminService';
-import { 
-  Bot, ShieldCheck, AlertTriangle, HelpCircle, Activity, 
-  Clock, RefreshCw, Search, CheckCircle2, XCircle, 
-  Database, Zap, Filter, ArrowRight, ShieldAlert, Sparkles
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import {
+  adminService,
+  AdminStatistics,
+  VerificationOverviewStats,
+  InteractionListItem,
+  InteractionDetail,
+  CitizenFeedbackItem,
+  FeedbackStats,
+  AuditEventItem,
+  AIRequestAuditItem,
+  ModelConfigItem,
+  ActiveConfigBundle,
+  KBStats,
+} from '../../services/adminService';
+import {
+  Bot, ShieldCheck, AlertTriangle, HelpCircle, Activity,
+  Clock, RefreshCw, Search, CheckCircle2, XCircle,
+  Database, ShieldAlert, Eye, X, Layers,
+  MessageSquareWarning, Cpu, ChevronRight
 } from 'lucide-react';
-import { 
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid 
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from 'recharts';
 
 export type BenchmarkConfigType = 'standalone' | 'rag' | 'nli';
+export type MonitoringSubsection =
+  | 'overview'
+  | 'verification'
+  | 'retrieval'
+  | 'latency'
+  | 'feedback'
+  | 'audit'
+  | 'models';
 
 interface AuditItem {
   id: string;
@@ -204,39 +226,106 @@ const AUDIT_LOG_DATA: AuditItem[] = [
   }
 ];
 
+const CATEGORIES: Array<'All' | AuditItem['category']> = [
+  'All',
+  'Water Supply',
+  'Sanitation',
+  'Roads & Works',
+  'Electricity',
+  'Govt Schemes',
+];
+
 export const AIMonitoringPage: React.FC = () => {
   const [stats, setStats] = useState<AdminStatistics | null>(null);
+  const [verifOverview, setVerifOverview] = useState<VerificationOverviewStats | null>(null);
+  const [interactions, setInteractions] = useState<InteractionListItem[]>([]);
+  const [feedbackList, setFeedbackList] = useState<CitizenFeedbackItem[]>([]);
+  const [feedbackStats, setFeedbackStats] = useState<FeedbackStats | null>(null);
+  const [auditEvents, setAuditEvents] = useState<AuditEventItem[]>([]);
+  const [aiRequestAudits, setAiRequestAudits] = useState<AIRequestAuditItem[]>([]);
+  const [models, setModels] = useState<ModelConfigItem[]>([]);
+  const [activeBundle, setActiveBundle] = useState<ActiveConfigBundle | null>(null);
+  const [kbStats, setKbStats] = useState<KBStats | null>(null);
+  const [mongoStatus, setMongoStatus] = useState<any>(null);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // 3-Configuration Research Benchmark Switcher
+  const [activeSubsection, setActiveSubsection] = useState<MonitoringSubsection>('overview');
   const [benchmarkConfig, setBenchmarkConfig] = useState<BenchmarkConfigType>('nli');
 
-  // Audit log search & filtering
   const [searchQuery, setSearchQuery] = useState('');
   const [filterVerdict, setFilterVerdict] = useState<'All' | 'Supported' | 'Contradicted' | 'Abstained'>('All');
+  const [categoryFilter, setCategoryFilter] = useState<'All' | AuditItem['category']>('All');
 
-  const fetchTelemetry = () => {
+  const [selectedAuditItem, setSelectedAuditItem] = useState<AuditItem | null>(null);
+  const [selectedInteraction, setSelectedInteraction] = useState<InteractionDetail | null>(null);
+  const [loadingInteraction, setLoadingInteraction] = useState(false);
+
+  const auditSectionRef = useRef<HTMLDivElement | null>(null);
+
+  const fetchTelemetry = async () => {
     setRefreshing(true);
-    adminService.getStatistics()
-      .then(setStats)
-      .finally(() => {
-        setLoading(false);
-        setRefreshing(false);
-      });
+    try {
+      const results = await Promise.allSettled([
+        adminService.getStatistics(),
+        adminService.getVerificationOverview(),
+        adminService.listInteractions({ page: 1, page_size: 10 }),
+        adminService.listAdminFeedback({ page: 1, page_size: 10 }),
+        adminService.getFeedbackStats(),
+        adminService.listAuditEvents({ page: 1, page_size: 10 }),
+        adminService.listAIRequestAudits({ page: 1, page_size: 10 }),
+        adminService.listModels(),
+        adminService.getActiveConfigBundle(),
+        adminService.getKBStats(),
+        adminService.getMongoDBStatus(),
+      ]);
+
+      if (results[0].status === 'fulfilled') setStats(results[0].value);
+      if (results[1].status === 'fulfilled') setVerifOverview(results[1].value);
+      if (results[2].status === 'fulfilled') setInteractions(results[2].value.items || []);
+      if (results[3].status === 'fulfilled') setFeedbackList(results[3].value.items || []);
+      if (results[4].status === 'fulfilled') setFeedbackStats(results[4].value);
+      if (results[5].status === 'fulfilled') setAuditEvents(results[5].value.items || []);
+      if (results[6].status === 'fulfilled') setAiRequestAudits(results[6].value.items || []);
+      if (results[7].status === 'fulfilled') setModels(results[7].value || []);
+      if (results[8].status === 'fulfilled') setActiveBundle(results[8].value);
+      if (results[9].status === 'fulfilled') setKbStats(results[9].value);
+      if (results[10].status === 'fulfilled') setMongoStatus(results[10].value);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
   useEffect(() => {
     fetchTelemetry();
   }, []);
 
-  // ─── Benchmark Configurations Data ───────────────────────────
-  // Total Benchmark queries: 26
-  // Active (NLI):
-  //   Supported: 18 (69.2%)
-  //   Contradiction Corrected: 3 (11.5%)
-  //   Safe Abstentions: 5 (19.3%)
-  //   Total = 18 + 3 + 5 = 26 (69.2% + 11.5% + 19.3% = 100.0%)
+  const jumpToAuditFilter = (
+    verdict: 'All' | 'Supported' | 'Contradicted' | 'Abstained',
+    cat: 'All' | AuditItem['category'] = categoryFilter
+  ) => {
+    setActiveSubsection('overview');
+    setFilterVerdict(verdict);
+    setCategoryFilter(cat);
+    setTimeout(() => {
+      auditSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  };
+
+  const openInteractionDetail = async (id: number) => {
+    setLoadingInteraction(true);
+    try {
+      const detail = await adminService.getInteractionDetail(id);
+      setSelectedInteraction(detail);
+    } catch {
+      // ignore if offline
+    } finally {
+      setLoadingInteraction(false);
+    }
+  };
+
   const configMetrics = useMemo(() => {
     if (benchmarkConfig === 'standalone') {
       return {
@@ -259,9 +348,9 @@ export const AIMonitoringPage: React.FC = () => {
           theme: 'red' as const
         },
         pieData: [
-          { name: 'Supported (Faithful)', value: 58.0, count: 15, color: '#15803D' },
-          { name: 'Contradicted (Hallucinated)', value: 42.0, count: 11, color: '#DC2626' },
-          { name: 'Insufficient (Abstained)', value: 0.0, count: 0, color: '#64748B' }
+          { name: 'Supported (Faithful)', verdictKey: 'Supported' as const, value: 58.0, count: 15, color: '#15803D' },
+          { name: 'Contradicted (Hallucinated)', verdictKey: 'Contradicted' as const, value: 42.0, count: 11, color: '#DC2626' },
+          { name: 'Insufficient (Abstained)', verdictKey: 'Abstained' as const, value: 0.0, count: 0, color: '#64748B' }
         ],
         barData: [
           { category: 'Water Supply', total: 7, faithful: 4, contradicted: 3, abstained: 0 },
@@ -294,9 +383,9 @@ export const AIMonitoringPage: React.FC = () => {
           theme: 'amber' as const
         },
         pieData: [
-          { name: 'Supported (Faithful)', value: 88.5, count: 23, color: '#15803D' },
-          { name: 'Contradicted (Passed Through)', value: 11.5, count: 3, color: '#DC2626' },
-          { name: 'Insufficient (Abstained)', value: 0.0, count: 0, color: '#64748B' }
+          { name: 'Supported (Faithful)', verdictKey: 'Supported' as const, value: 88.5, count: 23, color: '#15803D' },
+          { name: 'Contradicted (Passed Through)', verdictKey: 'Contradicted' as const, value: 11.5, count: 3, color: '#DC2626' },
+          { name: 'Insufficient (Abstained)', verdictKey: 'Abstained' as const, value: 0.0, count: 0, color: '#64748B' }
         ],
         barData: [
           { category: 'Water Supply', total: 7, faithful: 6, contradicted: 1, abstained: 0 },
@@ -308,7 +397,6 @@ export const AIMonitoringPage: React.FC = () => {
       };
     }
 
-    // Default: 'nli' -> LLM + RAG + NLI Verification (Active)
     return {
       name: 'LLM + RAG + NLI Verification (Active)',
       badge: 'Full Research Architecture',
@@ -329,9 +417,9 @@ export const AIMonitoringPage: React.FC = () => {
         theme: 'emerald' as const
       },
       pieData: [
-        { name: 'Supported (Faithful)', value: 69.2, count: 18, color: '#15803D' },
-        { name: 'Contradiction Corrected', value: 11.5, count: 3, color: '#DC2626' },
-        { name: 'Safe Abstentions', value: 19.3, count: 5, color: '#64748B' }
+        { name: 'Supported (Faithful)', verdictKey: 'Supported' as const, value: 69.2, count: 18, color: '#15803D' },
+        { name: 'Contradiction Corrected', verdictKey: 'Contradicted' as const, value: 11.5, count: 3, color: '#DC2626' },
+        { name: 'Safe Abstentions', verdictKey: 'Abstained' as const, value: 19.3, count: 5, color: '#64748B' }
       ],
       barData: [
         { category: 'Water Supply', total: 7, faithful: 5, contradicted: 1, abstained: 1 },
@@ -343,20 +431,20 @@ export const AIMonitoringPage: React.FC = () => {
     };
   }, [benchmarkConfig]);
 
-  // Filtered audit logs
   const filteredAuditLog = useMemo(() => {
     return AUDIT_LOG_DATA.filter(item => {
-      const matchesFilter = filterVerdict === 'All' || item.verdict === filterVerdict;
+      const matchesVerdict = filterVerdict === 'All' || item.verdict === filterVerdict;
+      const matchesCat = categoryFilter === 'All' || item.category === categoryFilter;
       const q = searchQuery.toLowerCase().trim();
-      const matchesSearch = !q || 
+      const matchesSearch = !q ||
         item.id.toLowerCase().includes(q) ||
         item.question.toLowerCase().includes(q) ||
         item.evidence.toLowerCase().includes(q) ||
         item.rawCandidate.toLowerCase().includes(q) ||
         item.category.toLowerCase().includes(q);
-      return matchesFilter && matchesSearch;
+      return matchesVerdict && matchesCat && matchesSearch;
     });
-  }, [filterVerdict, searchQuery]);
+  }, [filterVerdict, categoryFilter, searchQuery]);
 
   if (loading) {
     return (
@@ -367,9 +455,19 @@ export const AIMonitoringPage: React.FC = () => {
     );
   }
 
+  const SUBSECTION_TABS: Array<{ id: MonitoringSubsection; label: string; badge?: string | number; Icon: React.ElementType }> = [
+    { id: 'overview', label: 'Telemetry & Claims', badge: AUDIT_LOG_DATA.length, Icon: Activity },
+    { id: 'verification', label: 'Verification Center (7-Q)', badge: verifOverview?.total_interactions ?? interactions.length, Icon: ShieldCheck },
+    { id: 'retrieval', label: 'Vector & KB Index', badge: kbStats?.total_documents ?? stats?.summary?.total_documents ?? 3, Icon: Database },
+    { id: 'latency', label: 'Latency & Pipeline Trace', badge: configMetrics.latency, Icon: Clock },
+    { id: 'feedback', label: 'Feedback & Error Review', badge: feedbackStats?.total_feedback ?? feedbackList.length, Icon: MessageSquareWarning },
+    { id: 'audit', label: 'Audit Logs & MongoDB', badge: auditEvents.length, Icon: Layers },
+    { id: 'models', label: 'Model & RAG Registry', badge: models.length, Icon: Cpu },
+  ];
+
   return (
     <div className="space-y-6 p-4 sm:p-8 max-w-7xl mx-auto">
-      
+
       {/* ─── Header Card with 3-Configuration Benchmark Switcher ───── */}
       <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-6 sm:p-8 border-l-4 border-l-[#15803D] flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="space-y-1.5">
@@ -384,15 +482,13 @@ export const AIMonitoringPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Right side controls: 3-way segmented switcher + Refresh */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          
-          {/* Segmented Control / Tab Switcher */}
           <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-semibold">
             <button
+              type="button"
               id="benchmark-tab-standalone"
               onClick={() => setBenchmarkConfig('standalone')}
-              className={`px-3 py-2 rounded-lg transition-all ${
+              className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
                 benchmarkConfig === 'standalone'
                   ? 'bg-white text-slate-900 shadow-sm font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -401,9 +497,10 @@ export const AIMonitoringPage: React.FC = () => {
               Standalone LLM (Baseline)
             </button>
             <button
+              type="button"
               id="benchmark-tab-rag"
               onClick={() => setBenchmarkConfig('rag')}
-              className={`px-3 py-2 rounded-lg transition-all ${
+              className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
                 benchmarkConfig === 'rag'
                   ? 'bg-white text-slate-900 shadow-sm font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -412,9 +509,10 @@ export const AIMonitoringPage: React.FC = () => {
               LLM + RAG
             </button>
             <button
+              type="button"
               id="benchmark-tab-nli"
               onClick={() => setBenchmarkConfig('nli')}
-              className={`px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                 benchmarkConfig === 'nli'
                   ? 'bg-emerald-700 text-white shadow-sm font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -425,12 +523,12 @@ export const AIMonitoringPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Refresh Button */}
           <button
+            type="button"
             id="refresh-telemetry-btn"
             onClick={fetchTelemetry}
             disabled={refreshing}
-            className="px-3.5 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all flex items-center gap-2 shadow-xs shrink-0"
+            className="px-3.5 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all flex items-center gap-2 shadow-xs shrink-0 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-emerald-700' : 'text-slate-500'}`} />
             Refresh Telemetry
@@ -438,11 +536,47 @@ export const AIMonitoringPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ─── 6 Responsive KPI Cards Grid ───────────────────────────── */}
+      {/* ─── Clickable Subsection Navigation Strip ─────────────────── */}
+      <div className="bg-white rounded-xl border border-slate-200 p-2 shadow-xs flex flex-wrap items-center gap-1.5">
+        {SUBSECTION_TABS.map(({ id, label, badge, Icon }) => {
+          const active = activeSubsection === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveSubsection(id)}
+              className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                active
+                  ? 'bg-[#0047BA] text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              <Icon className={`w-3.5 h-3.5 ${active ? 'text-sky-200' : 'text-slate-500'}`} />
+              <span>{label}</span>
+              {badge !== undefined && (
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                  active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
+                }`}>
+                  {badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ─── 6 Clickable KPI Cards Grid (Filter or Switch Subsection) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        
-        {/* Card 1: Total AI Queries */}
-        <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-5 space-y-2 hover:border-slate-300 transition-colors">
+
+        <button
+          type="button"
+          onClick={() => jumpToAuditFilter('All', 'All')}
+          className={`text-left bg-white rounded-xl shadow-xs border p-5 space-y-2 transition-all cursor-pointer hover:shadow-md ${
+            activeSubsection === 'overview' && filterVerdict === 'All'
+              ? 'border-slate-900 ring-2 ring-slate-200'
+              : 'border-slate-200 hover:border-slate-400'
+          }`}
+        >
           <div className="flex items-center justify-between text-xs font-bold text-slate-500">
             <span>Total AI Queries</span>
             <Bot className="w-4 h-4 text-slate-700" />
@@ -450,11 +584,21 @@ export const AIMonitoringPage: React.FC = () => {
           <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
             {configMetrics.totalQueries}
           </div>
-          <p className="text-xs text-slate-500">Active evaluation benchmark</p>
-        </div>
+          <p className="text-xs text-slate-500 flex items-center justify-between">
+            <span>Active benchmark</span>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+          </p>
+        </button>
 
-        {/* Card 2: Supported (Faithful) */}
-        <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-5 space-y-2 hover:border-emerald-300 transition-colors">
+        <button
+          type="button"
+          onClick={() => jumpToAuditFilter('Supported')}
+          className={`text-left bg-white rounded-xl shadow-xs border p-5 space-y-2 transition-all cursor-pointer hover:shadow-md ${
+            activeSubsection === 'overview' && filterVerdict === 'Supported'
+              ? 'border-[#15803D] ring-2 ring-emerald-200'
+              : 'border-slate-200 hover:border-emerald-300'
+          }`}
+        >
           <div className="flex items-center justify-between text-xs font-bold text-[#15803D]">
             <span>Supported (Faithful)</span>
             <ShieldCheck className="w-4 h-4 text-[#15803D]" />
@@ -462,11 +606,21 @@ export const AIMonitoringPage: React.FC = () => {
           <div className="text-3xl font-extrabold text-[#15803D] tracking-tight">
             {configMetrics.supportedPct}%
           </div>
-          <p className="text-xs text-slate-500">{configMetrics.supportedCount} queries • Grounded by chunks</p>
-        </div>
+          <p className="text-xs text-slate-500 flex items-center justify-between">
+            <span>{configMetrics.supportedCount} queries • View</span>
+            <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+          </p>
+        </button>
 
-        {/* Card 3: Contradiction Corrected */}
-        <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-5 space-y-2 hover:border-red-300 transition-colors">
+        <button
+          type="button"
+          onClick={() => jumpToAuditFilter('Contradicted')}
+          className={`text-left bg-white rounded-xl shadow-xs border p-5 space-y-2 transition-all cursor-pointer hover:shadow-md ${
+            activeSubsection === 'overview' && filterVerdict === 'Contradicted'
+              ? 'border-[#DC2626] ring-2 ring-red-200'
+              : 'border-slate-200 hover:border-red-300'
+          }`}
+        >
           <div className="flex items-center justify-between text-xs font-bold text-[#DC2626]">
             <span>{benchmarkConfig === 'nli' ? 'Contradiction Corrected' : 'Contradicted / Hallucinated'}</span>
             <AlertTriangle className="w-4 h-4 text-[#DC2626]" />
@@ -474,13 +628,21 @@ export const AIMonitoringPage: React.FC = () => {
           <div className="text-3xl font-extrabold text-[#DC2626] tracking-tight">
             {configMetrics.contradictedPct}%
           </div>
-          <p className="text-xs text-slate-500">
-            {configMetrics.contradictedCount} queries • {benchmarkConfig === 'nli' ? 'Intercepted before citizen' : 'Unchecked exposure'}
+          <p className="text-xs text-slate-500 flex items-center justify-between">
+            <span>{configMetrics.contradictedCount} queries • Inspect</span>
+            <ChevronRight className="w-3.5 h-3.5 text-red-500" />
           </p>
-        </div>
+        </button>
 
-        {/* Card 4: Safe Abstentions */}
-        <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-5 space-y-2 hover:border-slate-400 transition-colors">
+        <button
+          type="button"
+          onClick={() => jumpToAuditFilter('Abstained')}
+          className={`text-left bg-white rounded-xl shadow-xs border p-5 space-y-2 transition-all cursor-pointer hover:shadow-md ${
+            activeSubsection === 'overview' && filterVerdict === 'Abstained'
+              ? 'border-slate-700 ring-2 ring-slate-200'
+              : 'border-slate-200 hover:border-slate-400'
+          }`}
+        >
           <div className="flex items-center justify-between text-xs font-bold text-[#64748B]">
             <span>Safe Abstentions</span>
             <HelpCircle className="w-4 h-4 text-[#64748B]" />
@@ -488,13 +650,21 @@ export const AIMonitoringPage: React.FC = () => {
           <div className="text-3xl font-extrabold text-[#64748B] tracking-tight">
             {configMetrics.abstainPct}%
           </div>
-          <p className="text-xs text-slate-500">
-            {configMetrics.abstainCount} queries • {configMetrics.abstainCount > 0 ? 'Insufficient evidence' : 'No abstention gate'}
+          <p className="text-xs text-slate-500 flex items-center justify-between">
+            <span>{configMetrics.abstainCount} queries • View</span>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
           </p>
-        </div>
+        </button>
 
-        {/* Card 5: Qdrant Retrieval Recall@K (NEW) */}
-        <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-5 space-y-2 hover:border-teal-300 transition-colors">
+        <button
+          type="button"
+          onClick={() => setActiveSubsection('retrieval')}
+          className={`text-left bg-white rounded-xl shadow-xs border p-5 space-y-2 transition-all cursor-pointer hover:shadow-md ${
+            activeSubsection === 'retrieval'
+              ? 'border-teal-700 ring-2 ring-teal-200'
+              : 'border-slate-200 hover:border-teal-300'
+          }`}
+        >
           <div className="flex items-center justify-between text-xs font-bold text-teal-700">
             <span>Qdrant Recall@K</span>
             <Database className="w-4 h-4 text-teal-700" />
@@ -502,11 +672,21 @@ export const AIMonitoringPage: React.FC = () => {
           <div className="text-3xl font-extrabold text-teal-800 tracking-tight">
             {configMetrics.recallRate}
           </div>
-          <p className="text-xs text-slate-500">{configMetrics.recallSubtext}</p>
-        </div>
+          <p className="text-xs text-slate-500 flex items-center justify-between">
+            <span>KB & Vector Index</span>
+            <ChevronRight className="w-3.5 h-3.5 text-teal-600" />
+          </p>
+        </button>
 
-        {/* Card 6: Avg End-to-End Latency (NEW) */}
-        <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-5 space-y-2 hover:border-indigo-300 transition-colors">
+        <button
+          type="button"
+          onClick={() => setActiveSubsection('latency')}
+          className={`text-left bg-white rounded-xl shadow-xs border p-5 space-y-2 transition-all cursor-pointer hover:shadow-md ${
+            activeSubsection === 'latency'
+              ? 'border-indigo-700 ring-2 ring-indigo-200'
+              : 'border-slate-200 hover:border-indigo-300'
+          }`}
+        >
           <div className="flex items-center justify-between text-xs font-bold text-indigo-700">
             <span>Avg E2E Latency</span>
             <Clock className="w-4 h-4 text-indigo-700" />
@@ -514,463 +694,899 @@ export const AIMonitoringPage: React.FC = () => {
           <div className="text-3xl font-extrabold text-indigo-800 tracking-tight">
             {configMetrics.latency}
           </div>
-          <p className="text-xs text-slate-500">{configMetrics.latencySubtext}</p>
-        </div>
+          <p className="text-xs text-slate-500 flex items-center justify-between">
+            <span>Stage Breakdown</span>
+            <ChevronRight className="w-3.5 h-3.5 text-indigo-600" />
+          </p>
+        </button>
 
       </div>
 
-      {/* ─── Two Column Visualizations ─────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Donut Distribution: Exact 100% Outcome Math */}
-        <div className="lg:col-span-5 bg-white rounded-xl shadow-xs border border-slate-200 p-6 sm:p-7 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-slate-900 text-base">Verification Outcome Ratio</h3>
-              <p className="text-xs text-slate-500">Total 26 Queries • Exact 100.0% Distribution</p>
-            </div>
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-              {configMetrics.totalQueries} Total
-            </span>
-          </div>
-
-          <div className="h-64 relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={configMetrics.pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={68}
-                  outerRadius={96}
-                  paddingAngle={3}
-                  dataKey="value"
+      {/* ============================================================ */}
+      {/*  SUBSECTION 1: OVERVIEW (CHARTS + CLAIM AUDIT LOG)           */}
+      {/* ============================================================ */}
+      {activeSubsection === 'overview' && (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-5 bg-white rounded-xl shadow-xs border border-slate-200 p-6 sm:p-7 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Verification Outcome Ratio</h3>
+                  <p className="text-xs text-slate-500">Click any slice or legend row to filter claims</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => jumpToAuditFilter('All')}
+                  className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 cursor-pointer"
                 >
-                  {configMetrics.pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#FFFFFF', 
-                    borderColor: '#E2E8F0', 
-                    borderRadius: '12px', 
-                    fontSize: '12px', 
-                    color: '#0F172A',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-                  }}
-                  formatter={(val: any, name: any, item: any) => [
-                    `${val}% (${item.payload.count} of ${configMetrics.totalQueries} queries)`, 
-                    name
-                  ]}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            
-            {/* Center Label inside donut */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-2xl font-black text-slate-900">{configMetrics.totalQueries}</span>
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Queries</span>
-            </div>
-          </div>
+                  {configMetrics.totalQueries} Total
+                </button>
+              </div>
 
-          {/* Exact Math breakdown legend summing to 100% */}
-          <div className="space-y-2 pt-3 border-t border-slate-100">
-            <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#15803D]" />
-                <span className="font-medium text-slate-700">Supported (Faithful)</span>
-              </span>
-              <span className="font-bold text-slate-900">
-                {configMetrics.supportedPct}% <span className="font-normal text-slate-500">({configMetrics.supportedCount} queries)</span>
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#DC2626]" />
-                <span className="font-medium text-slate-700">
-                  {benchmarkConfig === 'nli' ? 'Contradiction Corrected' : 'Contradicted / Hallucinated'}
-                </span>
-              </span>
-              <span className="font-bold text-slate-900">
-                {configMetrics.contradictedPct}% <span className="font-normal text-slate-500">({configMetrics.contradictedCount} queries)</span>
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#64748B]" />
-                <span className="font-medium text-slate-700">Safe Abstentions (Insufficient Evidence)</span>
-              </span>
-              <span className="font-bold text-slate-900">
-                {configMetrics.abstainPct}% <span className="font-normal text-slate-500">({configMetrics.abstainCount} queries)</span>
-              </span>
-            </div>
+              <div className="h-64 relative">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={configMetrics.pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={68}
+                      outerRadius={96}
+                      paddingAngle={3}
+                      dataKey="value"
+                      className="cursor-pointer"
+                      onClick={(entry: any) => {
+                        if (entry?.verdictKey) jumpToAuditFilter(entry.verdictKey);
+                      }}
+                    >
+                      {configMetrics.pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#FFFFFF',
+                        borderColor: '#E2E8F0',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        color: '#0F172A',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                      }}
+                      formatter={(val: any, name: any, item: any) => [
+                        `${val}% (${item.payload.count} of ${configMetrics.totalQueries} queries)`,
+                        name
+                      ]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
 
-            {/* Sum Verification Tag */}
-            <div className="pt-2 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-              <span>Total Benchmark Share:</span>
-              <span className="font-bold text-emerald-700">
-                {(configMetrics.supportedPct + configMetrics.contradictedPct + configMetrics.abstainPct).toFixed(1)}% (100% Exact)
-              </span>
-            </div>
-          </div>
-        </div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-2xl font-black text-slate-900">{configMetrics.totalQueries}</span>
+                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Queries</span>
+                </div>
+              </div>
 
-        {/* Grouped Bar Chart: All 5 categories with interval={0} and compact top legend */}
-        <div className="lg:col-span-7 bg-white rounded-xl shadow-xs border border-slate-200 p-6 sm:p-7 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h3 className="font-bold text-slate-900 text-base">Grievance Category Faithfulness</h3>
-              <p className="text-xs text-slate-500">All 5 village service domains (26 queries evaluated)</p>
-            </div>
-            
-            {/* Compact Legend above chart */}
-            <div className="flex flex-wrap items-center gap-3 text-xs font-semibold">
-              <span className="flex items-center gap-1.5 text-slate-700">
-                <span className="w-2.5 h-2.5 rounded-sm bg-[#15803D]" />
-                <span>Supported</span>
-              </span>
-              <span className="flex items-center gap-1.5 text-slate-700">
-                <span className="w-2.5 h-2.5 rounded-sm bg-[#DC2626]" />
-                <span>Contradicted</span>
-              </span>
-              <span className="flex items-center gap-1.5 text-slate-700">
-                <span className="w-2.5 h-2.5 rounded-sm bg-[#64748B]" />
-                <span>Abstained</span>
-              </span>
-            </div>
-          </div>
+              <div className="space-y-1.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => jumpToAuditFilter('Supported')}
+                  className={`w-full flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg transition cursor-pointer ${
+                    filterVerdict === 'Supported' ? 'bg-emerald-50 ring-1 ring-emerald-200' : 'hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#15803D]" />
+                    <span className="font-medium text-slate-700">Supported (Faithful)</span>
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    {configMetrics.supportedPct}% <span className="font-normal text-slate-500">({configMetrics.supportedCount} queries)</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => jumpToAuditFilter('Contradicted')}
+                  className={`w-full flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg transition cursor-pointer ${
+                    filterVerdict === 'Contradicted' ? 'bg-red-50 ring-1 ring-red-200' : 'hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#DC2626]" />
+                    <span className="font-medium text-slate-700">
+                      {benchmarkConfig === 'nli' ? 'Contradiction Corrected' : 'Contradicted / Hallucinated'}
+                    </span>
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    {configMetrics.contradictedPct}% <span className="font-normal text-slate-500">({configMetrics.contradictedCount} queries)</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => jumpToAuditFilter('Abstained')}
+                  className={`w-full flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg transition cursor-pointer ${
+                    filterVerdict === 'Abstained' ? 'bg-slate-100 ring-1 ring-slate-300' : 'hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#64748B]" />
+                    <span className="font-medium text-slate-700">Safe Abstentions (Insufficient Evidence)</span>
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    {configMetrics.abstainPct}% <span className="font-normal text-slate-500">({configMetrics.abstainCount} queries)</span>
+                  </span>
+                </button>
 
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={configMetrics.barData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                {/* Fixed interval={0} ensures all 5 category labels render */}
-                <XAxis 
-                  dataKey="category" 
-                  interval={0}
-                  tick={{ fill: '#475569', fontSize: 11, fontWeight: 500 }}
-                  tickLine={{ stroke: '#CBD5E1' }}
-                  dy={6}
-                />
-                <YAxis 
-                  tick={{ fill: '#64748B', fontSize: 11 }} 
-                  allowDecimals={false}
-                  domain={[0, 8]}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#FFFFFF', 
-                    borderColor: '#E2E8F0', 
-                    borderRadius: '12px', 
-                    fontSize: '12px', 
-                    color: '#0F172A',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-                  }}
-                  cursor={{ fill: 'rgba(241, 245, 249, 0.6)' }}
-                />
-                <Bar dataKey="faithful" name="Faithful Grounded" fill="#15803D" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="contradicted" name="Contradicted / Hallucinated" fill="#DC2626" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="abstained" name="Safe Abstentions" fill="#64748B" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Automated Safety Guarantee Banner */}
-          <div className={`p-4 rounded-xl border flex items-center justify-between text-xs transition-colors ${
-            configMetrics.safetyBanner.theme === 'emerald'
-              ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
-              : configMetrics.safetyBanner.theme === 'amber'
-              ? 'bg-amber-50/80 border-amber-200 text-amber-900'
-              : 'bg-red-50/80 border-red-200 text-red-900'
-          }`}>
-            <div className="flex items-center gap-2">
-              {configMetrics.safetyBanner.theme === 'emerald' ? (
-                <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
-              ) : configMetrics.safetyBanner.theme === 'amber' ? (
-                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
-              ) : (
-                <ShieldAlert className="w-4 h-4 text-red-700 shrink-0" />
-              )}
-              <div>
-                <span className="font-bold mr-1.5">{configMetrics.safetyBanner.title}</span>
-                <span>{configMetrics.safetyBanner.description}</span>
+                <div className="pt-2 px-2 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                  <span>Total Benchmark Share:</span>
+                  <span className="font-bold text-emerald-700">
+                    {(configMetrics.supportedPct + configMetrics.contradictedPct + configMetrics.abstainPct).toFixed(1)}% (100% Exact)
+                  </span>
+                </div>
               </div>
             </div>
-            <span className="hidden sm:inline-block font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-white/80 border border-slate-200">
-              {configMetrics.badge}
-            </span>
-          </div>
-        </div>
 
-      </div>
+            <div className="lg:col-span-7 bg-white rounded-xl shadow-xs border border-slate-200 p-6 sm:p-7 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Grievance Category Faithfulness</h3>
+                  <p className="text-xs text-slate-500">Click any domain pill or legend button to drill into claims</p>
+                </div>
 
-      {/* ─── Live NLI Inference Audit Log Table (Bottom Card) ─────── */}
-      <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden space-y-4 p-6 sm:p-7">
-        
-        {/* Table Header with Search and Filter Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-slate-900 text-base">Recent Claim Verification Audit Log</h3>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                {filteredAuditLog.length} Records
-              </span>
+                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => jumpToAuditFilter('Supported')}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md text-slate-700 hover:bg-emerald-50 transition cursor-pointer"
+                  >
+                    <span className="w-2.5 h-2.5 rounded-sm bg-[#15803D]" />
+                    <span>Supported</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => jumpToAuditFilter('Contradicted')}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md text-slate-700 hover:bg-red-50 transition cursor-pointer"
+                  >
+                    <span className="w-2.5 h-2.5 rounded-sm bg-[#DC2626]" />
+                    <span>Contradicted</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => jumpToAuditFilter('Abstained')}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                  >
+                    <span className="w-2.5 h-2.5 rounded-sm bg-[#64748B]" />
+                    <span>Abstained</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => jumpToAuditFilter(filterVerdict, cat)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition cursor-pointer ${
+                      categoryFilter === cat
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {cat === 'All' ? 'All Domains' : cat}
+                  </button>
+                ))}
+              </div>
+
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={configMetrics.barData}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
+                    onClick={(state: any) => {
+                      if (state?.activeLabel) {
+                        jumpToAuditFilter(filterVerdict, state.activeLabel as AuditItem['category']);
+                      }
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                    <XAxis
+                      dataKey="category"
+                      interval={0}
+                      tick={{ fill: '#475569', fontSize: 11, fontWeight: 500 }}
+                      tickLine={{ stroke: '#CBD5E1' }}
+                      dy={6}
+                    />
+                    <YAxis
+                      tick={{ fill: '#64748B', fontSize: 11 }}
+                      allowDecimals={false}
+                      domain={[0, 8]}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#FFFFFF',
+                        borderColor: '#E2E8F0',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        color: '#0F172A',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                      }}
+                      cursor={{ fill: 'rgba(241, 245, 249, 0.6)' }}
+                    />
+                    <Bar dataKey="faithful" name="Faithful Grounded" fill="#15803D" radius={[4, 4, 0, 0]} className="cursor-pointer" />
+                    <Bar dataKey="contradicted" name="Contradicted / Hallucinated" fill="#DC2626" radius={[4, 4, 0, 0]} className="cursor-pointer" />
+                    <Bar dataKey="abstained" name="Safe Abstentions" fill="#64748B" radius={[4, 4, 0, 0]} className="cursor-pointer" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className={`p-4 rounded-xl border flex items-center justify-between text-xs transition-colors ${
+                configMetrics.safetyBanner.theme === 'emerald'
+                  ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+                  : configMetrics.safetyBanner.theme === 'amber'
+                  ? 'bg-amber-50/80 border-amber-200 text-amber-900'
+                  : 'bg-red-50/80 border-red-200 text-red-900'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {configMetrics.safetyBanner.theme === 'emerald' ? (
+                    <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                  ) : configMetrics.safetyBanner.theme === 'amber' ? (
+                    <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+                  ) : (
+                    <ShieldAlert className="w-4 h-4 text-red-700 shrink-0" />
+                  )}
+                  <div>
+                    <span className="font-bold mr-1.5">{configMetrics.safetyBanner.title}</span>
+                    <span>{configMetrics.safetyBanner.description}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveSubsection('verification')}
+                  className="hidden sm:inline-block font-mono text-[11px] font-bold px-2.5 py-1 rounded bg-white/90 hover:bg-white border border-slate-200 cursor-pointer shrink-0"
+                >
+                  {configMetrics.badge}
+                </button>
+              </div>
             </div>
-            <p className="text-xs text-slate-500">
-              Granular NLI cross-encoder inferencing on raw LLM statements against Qdrant retrieved evidence chunks
-            </p>
           </div>
 
-          {/* Search + Filter Controls */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Search Input */}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                id="audit-search-input"
-                type="text"
-                placeholder="Search claims, queries, evidence..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-700 focus:border-emerald-700 w-52 sm:w-64 transition-all"
-              />
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="inline-flex p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold">
-              <button
-                id="filter-all-btn"
-                onClick={() => setFilterVerdict('All')}
-                className={`px-2.5 py-1 rounded transition-all ${
-                  filterVerdict === 'All' 
-                    ? 'bg-white text-slate-900 shadow-xs font-bold' 
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                All (26)
-              </button>
-              <button
-                id="filter-supported-btn"
-                onClick={() => setFilterVerdict('Supported')}
-                className={`px-2.5 py-1 rounded transition-all ${
-                  filterVerdict === 'Supported' 
-                    ? 'bg-emerald-700 text-white shadow-xs font-bold' 
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Supported (18)
-              </button>
-              <button
-                id="filter-contradicted-btn"
-                onClick={() => setFilterVerdict('Contradicted')}
-                className={`px-2.5 py-1 rounded transition-all ${
-                  filterVerdict === 'Contradicted' 
-                    ? 'bg-red-700 text-white shadow-xs font-bold' 
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Contradicted (3)
-              </button>
-              <button
-                id="filter-abstained-btn"
-                onClick={() => setFilterVerdict('Abstained')}
-                className={`px-2.5 py-1 rounded transition-all ${
-                  filterVerdict === 'Abstained' 
-                    ? 'bg-slate-700 text-white shadow-xs font-bold' 
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Abstained (5)
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Table Container */}
-        <div className="overflow-x-auto border border-slate-200 rounded-xl">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-4 w-56">Query ID & Citizen Question</th>
-                <th className="py-3 px-4 w-72">Retrieved Qdrant Evidence</th>
-                <th className="py-3 px-4 w-80">Raw LLM Candidate</th>
-                <th className="py-3 px-4 w-44">NLI Score & Verdict</th>
-                <th className="py-3 px-4 w-48">Final System Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredAuditLog.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-500">
-                    No claim records matching current filters.
-                  </td>
-                </tr>
-              ) : (
-                filteredAuditLog.map((log) => {
-                  const isContradicted = log.verdict === 'Contradicted';
-                  const isAbstained = log.verdict === 'Abstained';
-                  const isSupported = log.verdict === 'Supported';
-
-                  return (
-                    <tr 
-                      key={log.id} 
-                      className={`hover:bg-slate-50/70 transition-colors ${
-                        isContradicted ? 'bg-red-50/20' : isAbstained ? 'bg-slate-50/30' : ''
-                      }`}
+          <div ref={auditSectionRef} className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden space-y-4 p-6 sm:p-7">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-bold text-slate-900 text-base">Recent Claim Verification Audit Log</h3>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                    {filteredAuditLog.length} Records
+                  </span>
+                  {categoryFilter !== 'All' && (
+                    <button
+                      type="button"
+                      onClick={() => setCategoryFilter('All')}
+                      className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1 cursor-pointer"
                     >
-                      {/* Query ID & Citizen Question */}
-                      <td className="py-3.5 px-4 align-top">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-[11px] font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                              {log.id}
-                            </span>
-                            <span className="text-[10px] font-semibold text-slate-500">
-                              {log.category}
-                            </span>
-                          </div>
-                          <p className="font-medium text-slate-900 leading-snug">
-                            {log.question}
-                          </p>
-                        </div>
-                      </td>
+                      {categoryFilter} <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500">
+                  Click any row to inspect the complete claim-evidence drilldown
+                </p>
+              </div>
 
-                      {/* Retrieved Qdrant Evidence */}
-                      <td className="py-3.5 px-4 align-top">
-                        <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 leading-relaxed font-mono text-[11px]">
-                          {log.evidence}
-                        </div>
-                      </td>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    id="audit-search-input"
+                    type="text"
+                    placeholder="Search claims, queries, evidence..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-700 focus:border-emerald-700 w-52 sm:w-64 transition-all"
+                  />
+                </div>
 
-                      {/* Raw LLM Candidate (Contradicted claims highlighted in soft red/amber) */}
-                      <td className="py-3.5 px-4 align-top">
-                        <div className="space-y-1.5 leading-relaxed text-slate-800">
-                          {isContradicted && log.contradictedClaimSnippet ? (
-                            <div className="p-2.5 rounded-lg bg-red-50/80 border border-red-200 text-red-950">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-red-700 block mb-1">
-                                Detected Contradiction:
-                              </span>
-                              <span>
-                                {log.rawCandidate.split(log.contradictedClaimSnippet).map((part, i, arr) => (
-                                  <React.Fragment key={i}>
-                                    {part}
-                                    {i < arr.length - 1 && (
-                                      <span className="bg-red-200/80 text-red-900 px-1 py-0.5 rounded font-semibold underline decoration-red-500">
-                                        {log.contradictedClaimSnippet}
-                                      </span>
-                                    )}
-                                  </React.Fragment>
-                                ))}
-                              </span>
-                            </div>
-                          ) : isAbstained ? (
-                            <div className="p-2.5 rounded-lg bg-amber-50/60 border border-amber-200 text-amber-950">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 block mb-1">
-                                Unsubstantiated Candidate:
-                              </span>
-                              <span>{log.rawCandidate}</span>
-                            </div>
-                          ) : (
-                            <div className="p-2.5 rounded-lg bg-emerald-50/40 border border-emerald-100 text-slate-800">
-                              <span>{log.rawCandidate}</span>
-                            </div>
-                          )}
+                <div className="inline-flex p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold">
+                  <button
+                    type="button"
+                    id="filter-all-btn"
+                    onClick={() => setFilterVerdict('All')}
+                    className={`px-2.5 py-1 rounded transition-all cursor-pointer ${
+                      filterVerdict === 'All'
+                        ? 'bg-white text-slate-900 shadow-xs font-bold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    All (26)
+                  </button>
+                  <button
+                    type="button"
+                    id="filter-supported-btn"
+                    onClick={() => setFilterVerdict('Supported')}
+                    className={`px-2.5 py-1 rounded transition-all cursor-pointer ${
+                      filterVerdict === 'Supported'
+                        ? 'bg-emerald-700 text-white shadow-xs font-bold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Supported (18)
+                  </button>
+                  <button
+                    type="button"
+                    id="filter-contradicted-btn"
+                    onClick={() => setFilterVerdict('Contradicted')}
+                    className={`px-2.5 py-1 rounded transition-all cursor-pointer ${
+                      filterVerdict === 'Contradicted'
+                        ? 'bg-red-700 text-white shadow-xs font-bold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Contradicted (3)
+                  </button>
+                  <button
+                    type="button"
+                    id="filter-abstained-btn"
+                    onClick={() => setFilterVerdict('Abstained')}
+                    className={`px-2.5 py-1 rounded transition-all cursor-pointer ${
+                      filterVerdict === 'Abstained'
+                        ? 'bg-slate-700 text-white shadow-xs font-bold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Abstained (5)
+                  </button>
+                </div>
+              </div>
+            </div>
 
-                          {/* If auto-corrected, show the replacement ground truth */}
-                          {log.correctedResponse && (
-                            <div className="text-[11px] text-emerald-800 bg-emerald-50 p-2 rounded border border-emerald-200 flex items-start gap-1.5">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                              <span><strong>Replacement:</strong> {log.correctedResponse}</span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* NLI Entailment Score & Verdict */}
-                      <td className="py-3.5 px-4 align-top">
-                        <div className="space-y-1.5">
-                          {isSupported && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              Supported ({typeof log.nliScore === 'number' ? log.nliScore.toFixed(2) : log.nliScore})
-                            </span>
-                          )}
-                          {isContradicted && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-50 text-red-800 border border-red-200">
-                              <XCircle className="w-3 h-3 text-red-600" />
-                              Contradicted ({typeof log.nliScore === 'number' ? log.nliScore.toFixed(2) : log.nliScore})
-                            </span>
-                          )}
-                          {isAbstained && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300">
-                              <HelpCircle className="w-3 h-3 text-slate-500" />
-                              Abstained ({log.nliScore})
-                            </span>
-                          )}
-                          <p className="text-[10px] text-slate-500">
-                            {isSupported ? 'Cross-encoder Entailment' : isContradicted ? 'Cross-encoder Refuted' : 'Threshold Gate < 0.40'}
-                          </p>
-                        </div>
-                      </td>
-
-                      {/* Final System Action */}
-                      <td className="py-3.5 px-4 align-top">
-                        <div className="space-y-1">
-                          {log.finalAction === 'Delivered As-Is' && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-100/70 text-emerald-900 border border-emerald-200">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                              Delivered As-Is
-                            </span>
-                          )}
-                          {log.finalAction === 'Auto-Corrected' && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-100/80 text-amber-900 border border-amber-300">
-                              <RefreshCw className="w-3.5 h-3.5 text-amber-700" />
-                              Auto-Corrected
-                            </span>
-                          )}
-                          {log.finalAction === 'Withheld / Abstained' && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-200/80 text-slate-800 border border-slate-300">
-                              <ShieldAlert className="w-3.5 h-3.5 text-slate-600" />
-                              Withheld / Abstained
-                            </span>
-                          )}
-                          <p className="text-[10px] text-slate-500">
-                            {log.finalAction === 'Auto-Corrected' 
-                              ? 'Hallucination intercepted & ground truth applied'
-                              : log.finalAction === 'Withheld / Abstained'
-                              ? 'Refused guess; escalated to officer'
-                              : 'Verified against Qdrant top chunks'}
-                          </p>
-                        </div>
+            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                    <th className="py-3 px-4 w-56">Query ID & Citizen Question</th>
+                    <th className="py-3 px-4 w-72">Retrieved Qdrant Evidence</th>
+                    <th className="py-3 px-4 w-80">Raw LLM Candidate</th>
+                    <th className="py-3 px-4 w-44">NLI Score & Verdict</th>
+                    <th className="py-3 px-4 w-48">Final System Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredAuditLog.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-slate-500">
+                        No claim records matching current filters.
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  ) : (
+                    filteredAuditLog.map((log) => {
+                      const isContradicted = log.verdict === 'Contradicted';
+                      const isAbstained = log.verdict === 'Abstained';
+                      const isSupported = log.verdict === 'Supported';
 
-        {/* Audit Log Footer Summary */}
-        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 gap-2">
-          <span>
-            Displaying <strong>{filteredAuditLog.length}</strong> evaluated queries out of <strong>26 Total AI Queries</strong>
-          </span>
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-600" /> 18 Supported (69.2%)
-            </span>
-            <span className="flex items-center gap-1.5 text-red-700 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-red-600" /> 3 Contradicted (11.5%)
-            </span>
-            <span className="flex items-center gap-1.5 text-slate-700 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-slate-600" /> 5 Abstained (19.3%)
+                      return (
+                        <tr
+                          key={log.id}
+                          onClick={() => setSelectedAuditItem(log)}
+                          className={`hover:bg-blue-50/40 transition-colors cursor-pointer ${
+                            isContradicted ? 'bg-red-50/20' : isAbstained ? 'bg-slate-50/30' : ''
+                          }`}
+                        >
+                          <td className="py-3.5 px-4 align-top">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[11px] font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                  {log.id}
+                                </span>
+                                <span className="text-[10px] font-semibold text-slate-500">
+                                  {log.category}
+                                </span>
+                              </div>
+                              <p className="font-medium text-slate-900 leading-snug">
+                                {log.question}
+                              </p>
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4 align-top">
+                            <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 leading-relaxed font-mono text-[11px]">
+                              {log.evidence}
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4 align-top">
+                            <div className="space-y-1.5 leading-relaxed text-slate-800">
+                              {isContradicted && log.contradictedClaimSnippet ? (
+                                <div className="p-2.5 rounded-lg bg-red-50/80 border border-red-200 text-red-950">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-red-700 block mb-1">
+                                    Detected Contradiction:
+                                  </span>
+                                  <span>
+                                    {log.rawCandidate.split(log.contradictedClaimSnippet).map((part, i, arr) => (
+                                      <React.Fragment key={i}>
+                                        {part}
+                                        {i < arr.length - 1 && (
+                                          <span className="bg-red-200/80 text-red-900 px-1 py-0.5 rounded font-semibold underline decoration-red-500">
+                                            {log.contradictedClaimSnippet}
+                                          </span>
+                                        )}
+                                      </React.Fragment>
+                                    ))}
+                                  </span>
+                                </div>
+                              ) : isAbstained ? (
+                                <div className="p-2.5 rounded-lg bg-amber-50/60 border border-amber-200 text-amber-950">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 block mb-1">
+                                    Unsubstantiated Candidate:
+                                  </span>
+                                  <span>{log.rawCandidate}</span>
+                                </div>
+                              ) : (
+                                <div className="p-2.5 rounded-lg bg-emerald-50/40 border border-emerald-100 text-slate-800">
+                                  <span>{log.rawCandidate}</span>
+                                </div>
+                              )}
+
+                              {log.correctedResponse && (
+                                <div className="text-[11px] text-emerald-800 bg-emerald-50 p-2 rounded border border-emerald-200 flex items-start gap-1.5">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                  <span><strong>Replacement:</strong> {log.correctedResponse}</span>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4 align-top">
+                            <div className="space-y-1.5">
+                              {isSupported && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  Supported ({typeof log.nliScore === 'number' ? log.nliScore.toFixed(2) : log.nliScore})
+                                </span>
+                              )}
+                              {isContradicted && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-50 text-red-800 border border-red-200">
+                                  <XCircle className="w-3 h-3 text-red-600" />
+                                  Contradicted ({typeof log.nliScore === 'number' ? log.nliScore.toFixed(2) : log.nliScore})
+                                </span>
+                              )}
+                              {isAbstained && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300">
+                                  <HelpCircle className="w-3 h-3 text-slate-500" />
+                                  Abstained ({log.nliScore})
+                                </span>
+                              )}
+                              <p className="text-[10px] text-slate-500">
+                                {isSupported ? 'Cross-encoder Entailment' : isContradicted ? 'Cross-encoder Refuted' : 'Threshold Gate < 0.40'}
+                              </p>
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4 align-top">
+                            <div className="space-y-1">
+                              {log.finalAction === 'Delivered As-Is' && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-100/70 text-emerald-900 border border-emerald-200">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                                  Delivered As-Is
+                                </span>
+                              )}
+                              {log.finalAction === 'Auto-Corrected' && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-100/80 text-amber-900 border border-amber-300">
+                                  <RefreshCw className="w-3.5 h-3.5 text-amber-700" />
+                                  Auto-Corrected
+                                </span>
+                              )}
+                              {log.finalAction === 'Withheld / Abstained' && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-200/80 text-slate-800 border border-slate-300">
+                                  <ShieldAlert className="w-3.5 h-3.5 text-slate-600" />
+                                  Withheld / Abstained
+                                </span>
+                              )}
+                              <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                                <Eye className="w-3 h-3" /> Click row to inspect
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 gap-2">
+              <span>
+                Displaying <strong>{filteredAuditLog.length}</strong> evaluated queries out of <strong>26 Total AI Queries</strong>
+              </span>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFilterVerdict('Supported')}
+                  className="flex items-center gap-1.5 text-emerald-700 font-semibold hover:underline cursor-pointer"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-600" /> 18 Supported (69.2%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterVerdict('Contradicted')}
+                  className="flex items-center gap-1.5 text-red-700 font-semibold hover:underline cursor-pointer"
+                >
+                  <span className="w-2 h-2 rounded-full bg-red-600" /> 3 Contradicted (11.5%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterVerdict('Abstained')}
+                  className="flex items-center gap-1.5 text-slate-700 font-semibold hover:underline cursor-pointer"
+                >
+                  <span className="w-2 h-2 rounded-full bg-slate-600" /> 5 Abstained (19.3%)
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ============================================================ */}
+      {/*  SUBSECTION 2: VERIFICATION CENTER (FEATURE 8 LIVE API)      */}
+      {/* ============================================================ */}
+      {activeSubsection === 'verification' && (
+        <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-slate-900 text-base">AI Verification Center — Live Interactions</h3>
+              <p className="text-xs text-slate-500">
+                Inspect live 7-question verification lifecycles from <code>/api/admin/verification/interactions</code>
+              </p>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+              Pass Rate: {verifOverview?.verification_pass_rate ?? 0}% · Avg Conf: {verifOverview?.avg_confidence ?? 0}%
             </span>
           </div>
-        </div>
 
-      </div>
+          <div className="overflow-x-auto border border-slate-200 rounded-xl">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px]">
+                <tr>
+                  <th className="py-3 px-4">ID</th>
+                  <th className="py-3 px-4">Citizen Question</th>
+                  <th className="py-3 px-4">Decision</th>
+                  <th className="py-3 px-4">Confidence</th>
+                  <th className="py-3 px-4">Claims (S / C / I)</th>
+                  <th className="py-3 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {interactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-500">
+                      No live AI interactions logged yet. Query the AI Assistant to populate this feed.
+                    </td>
+                  </tr>
+                ) : (
+                  interactions.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50">
+                      <td className="py-3 px-4 font-mono font-bold">#{item.id}</td>
+                      <td className="py-3 px-4 font-medium text-slate-900 max-w-md truncate">{item.question}</td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 rounded-full font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                          {item.decision}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-bold">{item.confidence}%</td>
+                      <td className="py-3 px-4 font-mono">
+                        {item.supported_count} / {item.contradicted_count} / {item.insufficient_count}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => openInteractionDetail(item.id)}
+                          disabled={loadingInteraction}
+                          className="px-2.5 py-1 rounded-lg bg-[#0047BA] text-white font-semibold hover:bg-blue-800 transition cursor-pointer"
+                        >
+                          Inspect 7 Questions
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/*  SUBSECTION 3: VECTOR & KB INDEX                             */}
+      {/* ============================================================ */}
+      {activeSubsection === 'retrieval' && (
+        <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-slate-900 text-base">Qdrant Vector Retrieval & Knowledge Base Health</h3>
+              <p className="text-xs text-slate-500">Live document index, chunk counts, approval pipeline, and expiry tracking</p>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200">
+              Recall@K: {configMetrics.recallRate}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-slate-500 font-semibold block">Total Documents</span>
+              <span className="text-2xl font-extrabold text-slate-900">{kbStats?.total_documents ?? stats?.summary?.total_documents ?? 3}</span>
+            </div>
+            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+              <span className="text-emerald-700 font-semibold block">Published Versions</span>
+              <span className="text-2xl font-extrabold text-emerald-900">{kbStats?.published_versions ?? 0}</span>
+            </div>
+            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+              <span className="text-amber-700 font-semibold block">Pending / Expiring (30d)</span>
+              <span className="text-2xl font-extrabold text-amber-900">
+                {(kbStats?.pending_approval ?? 0)} / {(kbStats?.expiring_within_30_days ?? 0)}
+              </span>
+            </div>
+            <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
+              <span className="text-blue-700 font-semibold block">Active Embedding Model</span>
+              <span className="text-sm font-extrabold text-blue-950 block mt-1">
+                {activeBundle?.active_rag?.embedding_model || 'all-MiniLM-L6-v2 (384d)'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/*  SUBSECTION 4: LATENCY & PIPELINE STAGE TRACE                */}
+      {/* ============================================================ */}
+      {activeSubsection === 'latency' && (
+        <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-6 space-y-5">
+          <div>
+            <h3 className="font-bold text-slate-900 text-base">End-to-End Pipeline Stage Latency</h3>
+            <p className="text-xs text-slate-500">Breakdown across retrieval, LLM candidate synthesis, and DeBERTa-v3 verification</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div className="p-4 rounded-xl bg-teal-50 border border-teal-200 space-y-1">
+              <span className="font-bold text-teal-800">1. Hybrid Retrieval (SQL + Qdrant)</span>
+              <div className="text-2xl font-black text-teal-950">{benchmarkConfig === 'standalone' ? '0ms' : '180ms'}</div>
+              <p className="text-teal-700">SQLite/PostgreSQL lookup + 384-d cosine top-K search</p>
+            </div>
+            <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 space-y-1">
+              <span className="font-bold text-blue-800">2. Grounded Answer Synthesis</span>
+              <div className="text-2xl font-black text-blue-950">{benchmarkConfig === 'standalone' ? '650ms' : '890ms'}</div>
+              <p className="text-blue-700">Gemini 2.5 Flash candidate + atomic claim extraction</p>
+            </div>
+            <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-200 space-y-1">
+              <span className="font-bold text-indigo-800">3. Cross-Encoder NLI Gate</span>
+              <div className="text-2xl font-black text-indigo-950">{benchmarkConfig === 'nli' ? '350ms' : '0ms'}</div>
+              <p className="text-indigo-700">Claim entailment check, correction loop & citations</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/*  SUBSECTION 5: FEEDBACK & ERROR REVIEW (FEATURE 9)           */}
+      {/* ============================================================ */}
+      {activeSubsection === 'feedback' && (
+        <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-slate-900 text-base">AI Feedback & Error Review Queue</h3>
+              <p className="text-xs text-slate-500">Citizen ratings and root-cause triage from <code>/api/admin/feedback</code></p>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+              Resolution Rate: {feedbackStats?.resolution_rate ?? 0}% ({feedbackStats?.resolved_count ?? 0} resolved / {feedbackStats?.pending_count ?? 0} pending)
+            </span>
+          </div>
+
+          <div className="overflow-x-auto border border-slate-200 rounded-xl">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px]">
+                <tr>
+                  <th className="py-3 px-4">Feedback ID</th>
+                  <th className="py-3 px-4">Type</th>
+                  <th className="py-3 px-4">Citizen Notes</th>
+                  <th className="py-3 px-4">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {feedbackList.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-slate-500">
+                      No citizen feedback submissions recorded yet.
+                    </td>
+                  </tr>
+                ) : (
+                  feedbackList.map((fb) => (
+                    <tr key={fb.id} className="hover:bg-slate-50">
+                      <td className="py-3 px-4 font-mono font-bold">#{fb.id} (Resp #{fb.response_id})</td>
+                      <td className="py-3 px-4 font-semibold">{fb.feedback_type}</td>
+                      <td className="py-3 px-4 text-slate-700">{fb.description || '—'}</td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-800">{fb.status}</span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/*  SUBSECTION 6: AUDIT LOGS & MONGODB STATUS (FEATURE 11)      */}
+      {/* ============================================================ */}
+      {activeSubsection === 'audit' && (
+        <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-slate-900 text-base">Audit Logs, Request Traces & MongoDB Status</h3>
+              <p className="text-xs text-slate-500">Live UUID traces and cloud MongoDB archival state</p>
+            </div>
+            <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
+              mongoStatus?.connected
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : 'bg-slate-100 text-slate-700 border-slate-300'
+            }`}>
+              MongoDB: {mongoStatus?.connected ? `Connected (${mongoStatus.database})` : (mongoStatus?.error || 'Disabled')}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div className="border border-slate-200 rounded-xl p-4 space-y-2">
+              <h4 className="font-bold text-slate-900">Recent Governance Events ({auditEvents.length})</h4>
+              {auditEvents.length === 0 ? (
+                <p className="text-slate-500">No SQL audit events logged yet.</p>
+              ) : (
+                auditEvents.slice(0, 6).map((ev) => (
+                  <div key={ev.id} className="p-2 rounded-lg bg-slate-50 border border-slate-100 flex justify-between gap-2">
+                    <span className="font-semibold text-slate-800">{ev.action} · {ev.entity_type}</span>
+                    <span className="font-mono text-[10px] text-slate-500">{ev.trace_id.slice(0, 8)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="border border-slate-200 rounded-xl p-4 space-y-2">
+              <h4 className="font-bold text-slate-900">AI Request Pipeline Audits ({aiRequestAudits.length})</h4>
+              {aiRequestAudits.length === 0 ? (
+                <p className="text-slate-500">No AI request audits recorded yet.</p>
+              ) : (
+                aiRequestAudits.slice(0, 6).map((au) => (
+                  <div key={au.id} className="p-2 rounded-lg bg-slate-50 border border-slate-100 flex justify-between gap-2">
+                    <span className="font-semibold text-slate-800">{au.model_name || 'Pipeline'} · {au.final_decision}</span>
+                    <span className="font-mono text-[10px] text-slate-500">{au.response_time_ms}ms</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/*  SUBSECTION 7: MODEL & RAG REGISTRY (FEATURE 12)             */}
+      {/* ============================================================ */}
+      {activeSubsection === 'models' && (
+        <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-6 space-y-5">
+          <div>
+            <h3 className="font-bold text-slate-900 text-base">Model & RAG Configuration Registry</h3>
+            <p className="text-xs text-slate-500">Active models, retrieval parameters, and evaluation-gated promotions</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-[10px] uppercase font-bold text-slate-500">Active LLM Model</span>
+              <div className="font-bold text-slate-900 text-sm">
+                {activeBundle?.active_model?.name || 'Gemini 2.5 Flash (Default)'}
+              </div>
+              <p className="text-slate-500">{activeBundle?.active_model?.model_identifier || 'gemini-2.5-flash'}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-[10px] uppercase font-bold text-slate-500">Active RAG Policy</span>
+              <div className="font-bold text-slate-900 text-sm">
+                {activeBundle?.active_rag?.name || 'Hybrid Top-4 Verified'}
+              </div>
+              <p className="text-slate-500">top_k: {activeBundle?.active_rag?.top_k ?? 4} · threshold: {activeBundle?.active_rag?.similarity_threshold ?? 0.55}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-[10px] uppercase font-bold text-slate-500">Registered Models</span>
+              <div className="font-bold text-slate-900 text-sm">{models.length} Entries</div>
+              <p className="text-slate-500">Gated by factual accuracy &gt;= 80% &amp; hallucination &lt;= 10%</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/*  DRILLDOWN MODAL: CLAIM AUDIT ROW INSPECTOR                  */}
+      {/* ============================================================ */}
+      {selectedAuditItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="w-full max-w-2xl bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                  {selectedAuditItem.id} · {selectedAuditItem.category}
+                </span>
+                <h3 className="text-base font-bold text-slate-900 mt-0.5">{selectedAuditItem.question}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAuditItem(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4 text-xs">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <span className="font-bold text-slate-700 block">1. Retrieved Grounding Evidence</span>
+                <p className="font-mono text-slate-800">{selectedAuditItem.evidence}</p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 space-y-1">
+                <span className="font-bold text-amber-900 block">2. Raw LLM Candidate Output</span>
+                <p className="text-amber-950">{selectedAuditItem.rawCandidate}</p>
+              </div>
+              {selectedAuditItem.correctedResponse && (
+                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 space-y-1">
+                  <span className="font-bold text-emerald-900 block">3. Final Delivered / Corrected Output</span>
+                  <p className="text-emerald-950">{selectedAuditItem.correctedResponse}</p>
+                </div>
+              )}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <span className="font-semibold text-slate-600">
+                  Verdict: <strong className="text-slate-900">{selectedAuditItem.verdict}</strong> · NLI Score: <strong>{selectedAuditItem.nliScore}</strong>
+                </span>
+                <span className="px-3 py-1 rounded-full font-bold bg-slate-100 text-slate-800">
+                  {selectedAuditItem.finalAction}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/*  DRILLDOWN MODAL: 7-QUESTION INTERACTION INSPECTOR           */}
+      {/* ============================================================ */}
+      {selectedInteraction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl border border-slate-200 shadow-2xl">
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50 sticky top-0">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                  Interaction #{selectedInteraction.interaction_id} · {selectedInteraction.decision}
+                </span>
+                <h3 className="text-base font-bold text-slate-900">{selectedInteraction.question}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedInteraction(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-3 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <strong className="block text-slate-800 mb-1">Q1. Raw LLM Generation</strong>
+                <p>{selectedInteraction.question_1_raw_generation?.raw_candidate_answer}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <strong className="block text-slate-800 mb-1">
+                  Q2–Q6. Extracted Claims ({selectedInteraction.question_2_extracted_claims?.length ?? 0})
+                </strong>
+                <p className="text-slate-600">
+                  Supported: {selectedInteraction.question_4_supported_claims?.length ?? 0} · Contradicted: {selectedInteraction.question_5_contradicted_claims?.length ?? 0} · Insufficient: {selectedInteraction.question_6_insufficient_evidence_claims?.length ?? 0}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                <strong className="block text-emerald-900 mb-1">Q7. Delivered Final Answer</strong>
+                <p className="text-emerald-950">{selectedInteraction.question_7_corrections_made?.delivered_final_answer}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
