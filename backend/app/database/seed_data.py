@@ -204,7 +204,8 @@ def seed_database():
             }
         ]
 
-        data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "documents"))
+        from app.config import settings
+        data_dir = os.path.join(settings.UPLOAD_DIR, "documents")
         os.makedirs(data_dir, exist_ok=True)
 
         for ds in docs_seed:

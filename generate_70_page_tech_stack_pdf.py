@@ -197,14 +197,15 @@ def tech_flow_diagram(tech_name, layer_name, upstream, downstream, color):
 # ------------------------------------------------------------------ 24 TECHNOLOGIES DATASET
 TECHNOLOGIES = [
     {
-        "num": "01", "name": "React 19", "pkg": "react ^19.0.0, react-dom ^19.0.0",
+        "num": "01", "name": "React 19", "pkg": "react ^19.2.8, react-dom ^19.2.8",
         "layer": "Layer 1: Frontend UI", "status": "Active (Live on dev port 5173)", "color": BLUE, "bg": BLUE_BG,
         "upstream": "Browser DOM & Vite HMR", "downstream": "React Router v7 & Axios",
-        "summary": "Core declarative component rendering engine powering the Citizen Grievance Portal, Gram Panchayat Operations Table, Interactive AI Assistant Chat, and the AI Pipeline Verification Center.",
+        "summary": "Core declarative component rendering engine powering the Citizen Grievance Portal, Gram Panchayat Operations Table, Interactive AI Assistant Chat with inline citations, and the AI Verification & Governance Center.",
         "files": [
             ("frontend/src/main.tsx", "Mounts StrictMode root container and binds React 19 fiber tree to #root."),
             ("frontend/src/App.tsx", "Configures AuthProvider, QueryClientProvider, and global layout shells."),
-            ("frontend/src/pages/admin/AIMonitoringPage.tsx", "Renders real-time NLI telemetry cards, 3-way switcher, and Recharts.")
+            ("frontend/src/pages/admin/AIMonitoringPage.tsx", "Renders real-time NLI telemetry cards, 3-way switcher, and Recharts."),
+            ("frontend/src/services/adminService.ts", "TypeScript API client covering Features 8-12 (Verification, Feedback, KB, Audit, Model/RAG).")
         ],
         "code_title": "frontend/src/main.tsx & App.tsx — React 19 Root Mounting",
         "code": """import React from 'react';
@@ -234,7 +235,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         ]
     },
     {
-        "num": "02", "name": "Vite 8", "pkg": "vite ^8.0.0, @vitejs/plugin-react",
+        "num": "02", "name": "Vite 8 + TypeScript", "pkg": "vite ^8.3.0, typescript ^7.0.2, @vitejs/plugin-react ^6.1.1",
         "layer": "Layer 1: Frontend Bundler", "status": "Active (Running in background)", "color": BLUE, "bg": BLUE_BG,
         "upstream": "TypeScript / JSX Source Tree", "downstream": "Browser ES Modules (Port 5173)",
         "summary": "Next-generation frontend build tool providing sub-50ms Hot Module Replacement (HMR), native ES module serving during development, and optimized Rollup static asset bundling for production.",
@@ -272,7 +273,7 @@ export default defineConfig({
         ]
     },
     {
-        "num": "03", "name": "React Router DOM v7", "pkg": "react-router-dom ^7.0.0",
+        "num": "03", "name": "React Router DOM v7", "pkg": "react-router-dom ^7.18.4",
         "layer": "Layer 1: Client Routing", "status": "Active (14+ Declarative Views)", "color": BLUE, "bg": BLUE_BG,
         "upstream": "React 19 App Shell", "downstream": "Protected Citizen & Admin Pages",
         "summary": "Manages declarative client-side routing, role-guarded route wrappers, URL parameter extraction for complaint tracking IDs, and active sidebar link synchronization.",
@@ -308,7 +309,7 @@ export default defineConfig({
         ]
     },
     {
-        "num": "04", "name": "Tailwind CSS v4", "pkg": "tailwindcss ^4.0.0, @tailwindcss/vite",
+        "num": "04", "name": "Tailwind CSS v4", "pkg": "tailwindcss ^4.3.3, @tailwindcss/vite ^4.3.3",
         "layer": "Layer 1: Styling & Design System", "status": "Active (Compiled via Vite Plugin)", "color": BLUE, "bg": BLUE_BG,
         "upstream": "frontend/src/index.css", "downstream": "All JSX/TSX Component Classes",
         "summary": "Utility-first CSS framework delivering the GEO CIVIC visual identity: royal blue sidebar navigation, semantic status pills, WCAG 2.2 AA high-contrast typography, and responsive bento grids.",
@@ -344,7 +345,7 @@ export default defineConfig({
         ]
     },
     {
-        "num": "05", "name": "Lucide React", "pkg": "lucide-react ^0.475.0",
+        "num": "05", "name": "Lucide React", "pkg": "lucide-react ^1.52.0",
         "layer": "Layer 1: UI Iconography", "status": "Active", "color": BLUE, "bg": BLUE_BG,
         "upstream": "React Component Tree", "downstream": "Inline SVG DOM Nodes",
         "summary": "Provides consistent 1.75px stroke vector icons for navigation menus, NLI verification badges, SLA countdown chips, and accessibility visual cues.",
@@ -375,7 +376,7 @@ export const VerdictIcon = ({ verdict }: { verdict: string }) => {
         ]
     },
     {
-        "num": "06", "name": "Recharts", "pkg": "recharts ^2.15.0",
+        "num": "06", "name": "Recharts", "pkg": "recharts ^3.10.1",
         "layer": "Layer 1: Data Visualization", "status": "Active", "color": BLUE, "bg": BLUE_BG,
         "upstream": "Telemetry & Benchmark API JSON", "downstream": "Responsive SVG Charts",
         "summary": "Declarative React charting library built on D3 submodules, powering the Verification Outcome Ratio donut chart, Grievance Category Faithfulness bar chart, and 3-way ablation graphs.",
@@ -409,7 +410,7 @@ export const VerdictIcon = ({ verdict }: { verdict: string }) => {
         ]
     },
     {
-        "num": "07", "name": "TanStack React Query", "pkg": "@tanstack/react-query ^5.66.0",
+        "num": "07", "name": "TanStack React Query", "pkg": "@tanstack/react-query ^5.104.1",
         "layer": "Layer 1: Server State & Caching", "status": "Active", "color": BLUE, "bg": BLUE_BG,
         "upstream": "React View Components", "downstream": "Axios API Service Functions",
         "summary": "Asynchronous server-state management engine handling caching, background refetching, optimistic UI triage updates, and automatic cache invalidation across complaints and telemetry views.",
@@ -440,7 +441,7 @@ export const VerdictIcon = ({ verdict }: { verdict: string }) => {
         ]
     },
     {
-        "num": "08", "name": "Axios", "pkg": "axios ^1.7.9",
+        "num": "08", "name": "Axios", "pkg": "axios ^1.20.0",
         "layer": "Layer 1: HTTP Client & Interceptors", "status": "Active (Targets localhost:8000/api)", "color": BLUE, "bg": BLUE_BG,
         "upstream": "TanStack Query & Services", "downstream": "FastAPI REST Gateway (Port 8000)",
         "summary": "Promise-based HTTP client configured with request and response interceptors that automatically inject JWT Bearer tokens and handle 401 session expiration cleanly.",
@@ -478,7 +479,7 @@ export default apiClient;""",
         ]
     },
     {
-        "num": "09", "name": "React Hook Form + Zod", "pkg": "react-hook-form ^7.54.0, zod ^3.24.0, @hookform/resolvers",
+        "num": "09", "name": "React Hook Form + Zod", "pkg": "react-hook-form ^7.89.0, zod ^4.6.5, @hookform/resolvers ^5.9.1",
         "layer": "Layer 1: Form Validation", "status": "Active", "color": BLUE, "bg": BLUE_BG,
         "upstream": "Citizen & Admin Form Inputs", "downstream": "Validated JSON Payloads to Axios",
         "summary": "Uncontrolled form state management paired with Zod declarative schema validation, ensuring every grievance submission and user registration meets strict domain rules before network dispatch.",
@@ -512,25 +513,26 @@ const grievanceSchema = z.object({
         ]
     },
     {
-        "num": "10", "name": "FastAPI", "pkg": "fastapi >= 0.115.0",
-        "layer": "Layer 2: Backend API Gateway", "status": "Active (Live on port 8000)", "color": GREEN, "bg": GREEN_BG,
-        "upstream": "Axios HTTP Client (Port 5173)", "downstream": "SQLAlchemy, Qdrant & RAG Pipeline",
-        "summary": "High-performance asynchronous Python ASGI web framework serving all REST endpoints for authentication, complaint lifecycle management, document ingestion, RAG question answering, and evaluation benchmarks.",
+        "num": "10", "name": "FastAPI", "pkg": "fastapi >= 0.110.0",
+        "layer": "Layer 2: Backend API Gateway", "status": "Active (13 Routers Mounted)", "color": GREEN, "bg": GREEN_BG,
+        "upstream": "Axios HTTP Client (Port 5173)", "downstream": "SQLAlchemy, Qdrant & CVE Verification Pipeline",
+        "summary": "High-performance asynchronous Python ASGI web framework serving 13 modular REST routers spanning authentication, complaints, KB versioning, hybrid RAG + NLI QA, provenance citations, 7-question verification audit, feedback, audit logs, and model/RAG governance.",
         "files": [
-            ("backend/app/main.py", "Initializes FastAPI app, configures CORS middleware, and mounts API routers."),
-            ("backend/app/api/complaints.py", "Exposes CRUD, status triage, department assignment, and tracking endpoints."),
-            ("backend/app/api/ai.py", "Exposes POST /api/ai/ask and GET /api/ai/telemetry for RAG + NLI pipeline.")
+            ("backend/app/main.py", "Initializes FastAPI app, configures CORS, and mounts all 13 API routers under /api."),
+            ("backend/app/api/verification_center.py", "Feature 8: 7-question AI Verification Center inspection endpoints."),
+            ("backend/app/api/feedback.py & knowledge_base.py", "Features 9-10: Citizen feedback review workflow and KB document versioning."),
+            ("backend/app/api/audit.py & model_config.py", "Features 11-12: UUID trace audit logs and evaluation-gated model/RAG registry.")
         ],
-        "code_title": "backend/app/main.py — FastAPI Application Bootstrap",
+        "code_title": "backend/app/main.py — FastAPI Modular Router Registration (13 Routers)",
         "code": """from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, complaints, ai, documents
+from app.api import (auth, users, complaints, departments, documents, ai,
+                     admin, research, verification_center, knowledge_base,
+                     audit, feedback, model_config)
 
-app = FastAPI(title="Evidence-Grounded Village Grievance API", version="2.4.0")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
-                   allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-app.include_router(ai.router, prefix="/api/ai")
-app.include_router(complaints.router, prefix="/api/complaints")""",
+app = FastAPI(title="Evidence-Grounded AI Village Grievance Redressal System API")
+for r in [auth, users, complaints, departments, documents, ai, admin,
+          research, verification_center, knowledge_base, audit, feedback, model_config]:
+    app.include_router(r.router, prefix="/api")""",
         "mechanics": [
             "Dependency Injection: Uses Depends(get_db) and Depends(get_current_user) to inject database sessions and RBAC identity into routes.",
             "Asynchronous I/O Concurrency: Handles concurrent citizen queries and staff triage updates without blocking the event loop.",
@@ -574,28 +576,26 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 --timeout-keep-alive
         ]
     },
     {
-        "num": "12", "name": "Pydantic v2 + Settings", "pkg": "pydantic >= 2.9.0, pydantic-settings >= 2.6.0",
+        "num": "12", "name": "Pydantic v2 + Settings", "pkg": "pydantic >= 2.6.0, pydantic-settings >= 2.2.0",
         "layer": "Layer 2: Data Contracts & Config", "status": "Active", "color": GREEN, "bg": GREEN_BG,
         "upstream": "Raw JSON Payloads & .env File", "downstream": "Typed Python Objects & FastAPI Responses",
-        "summary": "Rust-accelerated (pydantic-core) data validation library enforcing strict input/output schemas across all API routes, LLM JSON outputs, and environment variable configurations.",
+        "summary": "Rust-accelerated (pydantic-core) data validation library enforcing strict schemas across all 13 API routers, citation reports, verification drilldowns, KB versioning, audit logs, and model/RAG evaluation gates.",
         "files": [
-            ("backend/app/config.py", "Defines `Settings(BaseSettings)` loading DATABASE_URL, QDRANT_URL, JWT_SECRET, and GEMINI_API_KEY."),
-            ("backend/app/schemas/complaint.py", "Defines ComplaintCreate, ComplaintUpdate, and ComplaintResponse schemas."),
-            ("backend/app/schemas/ai.py", "Defines AIQueryRequest, ClaimVerificationItem, and VerifiedAIResponse contracts.")
+            ("backend/app/config.py", "Defines `Settings(BaseSettings)` loading DATABASE_URL, QDRANT_COLLECTION, JWT_SECRET, LLM_MODEL."),
+            ("backend/app/schemas/verification_center.py & ai.py", "Defines CitationOut, 7-question InteractionDetail, and AIQueryResponse schemas."),
+            ("backend/app/schemas/feedback.py, knowledge_base.py, audit.py, model_config.py", "Strict governance contracts for Features 9-12.")
         ],
         "code_title": "backend/app/config.py — Pydantic-Settings Environment Loader",
         "code": """from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Evidence-Grounded Village Grievance System"
+    PROJECT_NAME: str = "Evidence-Grounded AI Village Grievance Redressal System"
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/village_grievance"
-    SQLITE_FALLBACK_URL: str = "sqlite:///./data/village_grievance.db"
-    QDRANT_URL: str = "http://localhost:6333"
-    GEMINI_API_KEY: str = ""
-    NLI_ENTAILMENT_THRESHOLD: float = 0.70
-
-    class Config:
-        env_file = ".env"
+    QDRANT_HOST: str = "localhost"
+    QDRANT_PORT: int = 6333
+    QDRANT_COLLECTION: str = "village_knowledge_base"
+    LLM_MODEL: str = "gemini-2.5-flash"
+    EMBEDDING_MODEL_NAME: str = "all-MiniLM-L6-v2"
 
 settings = Settings()""",
         "mechanics": [
@@ -673,21 +673,21 @@ def require_admin(user = Depends(get_current_user)):
         ],
         "contracts": [
             ("Hash Format", "$2b$12$<22_char_salt><31_char_hash>"),
-            ("Role: citizen", "Can submit grievances, view own complaints, query AI assistant"),
-            ("Role: staff", "Can triage complaints, assign departments, update official remarks"),
-            ("Role: admin", "Full access to Knowledge Base uploads, NLI Telemetry, and Benchmark Evaluator")
+            ("Role: CITIZEN", "Submit grievances, query AI assistant, submit answer feedback (POST /api/feedback)"),
+            ("Role: PANCHAYAT_STAFF / OFFICIAL", "Triage complaints, upload/reindex KB versions, review citizen feedback"),
+            ("Role: ADMIN & RESEARCHER", "Approve KB/Model configs, inspect Verification Center (F8), Audit Logs (F11), and ablation benchmarks")
         ]
     },
     {
-        "num": "15", "name": "SQLAlchemy 2.0", "pkg": "sqlalchemy >= 2.0.35",
+        "num": "15", "name": "SQLAlchemy 2.0", "pkg": "sqlalchemy >= 2.0.28",
         "layer": "Layer 3: Object-Relational Mapping", "status": "Active", "color": AMBER, "bg": AMBER_BG,
         "upstream": "FastAPI Services & Hybrid Retriever", "downstream": "PostgreSQL 15 / SQLite Engine",
-        "summary": "Manages declarative database models, ACID transaction lifecycles, relational foreign keys, automated startup seeding, and structured SQL queries for the RAG retriever.",
+        "summary": "Manages 21+ declarative database tables across core grievance tracking, AI verification trails (claims, corrections, abstentions, citations), and governance tables (feedback reviews, KB versions, UUID audit traces, model/RAG registries).",
         "files": [
-            ("backend/app/database/session.py", "Configures `create_engine`, `SessionLocal`, `Base`, and automatic Postgres-to-SQLite failover."),
-            ("backend/app/models/complaint.py", "Defines Complaint entity (tracking_id, title, category, ward, status, department, sla_hours)."),
-            ("backend/app/models/ai_log.py", "Defines AIResponse and VerificationResult tables for live telemetry auditing."),
-            ("backend/app/models/document.py", "Tracks uploaded government scheme PDFs/DOCX files and chunk counts.")
+            ("backend/app/database/session.py", "Configures `create_engine`, `SessionLocal`, `Base`, and Postgres-to-SQLite failover."),
+            ("backend/app/models/ai_records.py", "AIQuery, AIResponse, Evidence, VerificationResult, CorrectionLog, AbstentionLog, Citations."),
+            ("backend/app/models/feedback.py & knowledge_base.py", "AIFeedback, FeedbackReview, DocumentVersion, and DocumentProcessingJob."),
+            ("backend/app/models/audit.py & model_config.py", "AuditEvent, AIRequestAudit, Model/RAG/VerificationConfiguration, Evaluations.")
         ],
         "code_title": "backend/app/database/session.py — Dual-Engine Failover Initialization",
         "code": """from sqlalchemy import create_engine, text
@@ -785,10 +785,10 @@ engine = create_engine(
         ]
     },
     {
-        "num": "18", "name": "Qdrant Vector Database", "pkg": "qdrant-client >= 1.12.0, qdrant/qdrant",
+        "num": "18", "name": "Qdrant Vector Database", "pkg": "qdrant-client >= 1.8.0, qdrant/qdrant",
         "layer": "Layer 3: Vector Memory Store", "status": "Active (With :memory: fallback)", "color": PURPLE, "bg": PURPLE_BG,
         "upstream": "Sentence-BERT 384-d Embeddings", "downstream": "Hybrid Retriever Top-K Chunks",
-        "summary": "High-performance vector similarity search engine storing 384-dimensional cosine embeddings and metadata payloads for government scheme circulars, Panchayat charters, and grievance records.",
+        "summary": "Vector similarity search engine storing 384-dimensional cosine embeddings in `village_knowledge_base` with metadata filtering (`status='verified'`, department, effective dates) and atomic chunk deletion during document re-indexing.",
         "files": [
             ("backend/app/services/qdrant_service.py", "Manages collection creation (`village_knowledge`), point upserts, and cosine similarity search."),
             ("docker-compose.yml", "Configures `qdrant/qdrant` container on ports 6333 (HTTP) and 6334 (gRPC).")
@@ -857,10 +857,10 @@ class EmbeddingService:
         ]
     },
     {
-        "num": "20", "name": "PyMuPDF + python-docx", "pkg": "PyMuPDF (fitz) >= 1.24.0, python-docx >= 1.1.2",
-        "layer": "Layer 4: Document Ingestion & Chunking", "status": "Active (250w / 40w overlap)", "color": PURPLE, "bg": PURPLE_BG,
-        "upstream": "Admin Knowledge Base Uploads", "downstream": "EmbeddingService & Qdrant",
-        "summary": "Extracts clean text from official Gram Panchayat PDF circulars and Microsoft Word (.docx) scheme guidelines, segmenting them into overlapping 250-word chunks with a 40-word sliding window.",
+        "num": "20", "name": "PyMuPDF + python-docx (KB Pipeline)", "pkg": "PyMuPDF >= 1.23.0, python-docx >= 1.1.0",
+        "layer": "Layer 4: Document Ingestion & Versioning", "status": "Active (Token-calibrated + SHA-256)", "color": PURPLE, "bg": PURPLE_BG,
+        "upstream": "Admin KB Uploads & Version Pipeline", "downstream": "EmbeddingService & Qdrant",
+        "summary": "Extracts text from PDF circulars and DOCX scheme guidelines using token-calibrated chunking (500-800 tokens, 75-120 overlap), SHA-256 duplicate prevention, and Feature 10 multi-stage processing jobs (extraction -> embedding -> indexing) with expiry tracking.",
         "files": [
             ("backend/app/services/document_parser.py", "Implements PDF (`fitz.open`), DOCX (`docx.Document`), and sliding-window chunking logic."),
             ("backend/app/api/documents.py", "Receives uploaded files, invokes parser, and indexes chunks into Qdrant.")
@@ -924,28 +924,22 @@ response = client.models.generate_content(
         ]
     },
     {
-        "num": "22", "name": "NLI Verification Gate", "pkg": "DeBERTa-v3 NLI Architecture (Contradiction + Decision Engine)",
-        "layer": "Layer 4: Hallucination Prevention Gate", "status": "Active (P >= 0.70 threshold)", "color": RED, "bg": RED_BG,
-        "upstream": "Gemini Candidate Answer + Claims", "downstream": "SHOW / CORRECT / ABSTAIN Verdict",
-        "summary": "Core safety layer comprising `contradiction_detector.py`, `validator.py`, and `decision_engine.py`. Scores every atomic claim against retrieved evidence and blocks or corrects hallucinations before delivery.",
+        "num": "22", "name": "Claim Verification Engine (CVE)", "pkg": "DeBERTa-v3 MNLI + Deterministic DB + 3-Tier Abstention + Citations",
+        "layer": "Layer 4: Hallucination & Provenance Engine", "status": "Active (121 Verification Tests)", "color": RED, "bg": RED_BG,
+        "upstream": "Gemini Candidate + Hybrid Evidence", "downstream": "SHOW / CORRECT / ABSTAIN + Citations",
+        "summary": "Full modular Claim Verification Engine in `backend/app/verification/` implementing SBD atomic claim extraction, deterministic SQL verification, DeBERTa-v3 NLI cross-encoding (T=1.15), composite confidence scoring, 2-retry auto-correction, 3-tier abstention, and live provenance citations.",
         "files": [
-            ("backend/app/hallucination/contradiction_detector.py", "Detects entity, department, status, and numerical contradictions between claims and evidence."),
-            ("backend/app/hallucination/validator.py", "Computes claim-level entailment confidence scores against retrieved chunks."),
-            ("backend/app/hallucination/decision_engine.py", "Enforces the 3-way threshold gate (`P >= 0.70` -> SHOW, Contradiction -> CORRECT, Low Evidence -> ABSTAIN)."),
-            ("backend/app/rag/pipeline.py", "Orchestrates retrieval, generation, NLI verification, auto-correction, and telemetry logging.")
+            ("backend/app/verification/extraction/", "Indian administrative SBD & atomic claim decomposition (claim_extractor.py)."),
+            ("backend/app/verification/evidence/ & models/", "db_verifier.py, evidence_mapper.py, singleton model_loader.py & nli_classifier.py."),
+            ("backend/app/verification/engine/ & correction/", "confidence_scorer.py, decision_engine.py, prompt_builder.py, correction_controller.py."),
+            ("backend/app/verification/abstention/ & citation/", "3-tier abstention engine, citation_generator.py & live citation_validator.py.")
         ],
-        "code_title": "backend/app/hallucination/decision_engine.py — 3-Way Verification Gate",
-        "code": """def evaluate_response(claims_audit: list[dict], evidence_chunks: list[dict]) -> dict:
-    if not evidence_chunks or max(c.get("score", 0.0) for c in evidence_chunks) < 0.45:
-        return {"verdict": "INSUFFICIENT", "action": "ABSTAIN", "answer": ABSTAIN_MESSAGE}
-
-    if any(c["status"] == "CONTRADICTED" for c in claims_audit):
-        return {"verdict": "CONTRADICTED", "action": "CORRECT"}
-
-    avg_entailment = sum(c["confidence"] for c in claims_audit) / max(1, len(claims_audit))
-    if avg_entailment >= 0.70:
-        return {"verdict": "SUPPORTED", "action": "SHOW"}
-    return {"verdict": "INSUFFICIENT", "action": "ABSTAIN", "answer": ABSTAIN_MESSAGE}""",
+        "code_title": "backend/app/verification/engine/confidence_scorer.py — Composite Formula",
+        "code": """# C(H | P) = A_source * S_match * max(0, p_E - 2.0 * p_C) * 100%
+# Tiers:
+#   1. Pre-Gen Sufficiency Gate (halts < 15ms on NULL DB fields or auth failure)
+#   2. Claim Extraction -> DB Verifier (0ms SQL) -> DeBERTa-v3 Cross-Encoder
+#   3. SHOW (>= 55% conf) | CORRECT (bounded 2-retry loop) | ABSTAIN + Citations""",
         "mechanics": [
             "Claim-Level Entailment Scoring: Evaluates each atomic claim individually against retrieved SQL records and Qdrant chunks.",
             "Department & Status Contradiction Interception: Flags mismatches (e.g., 'Road Department' vs 'Water Department') immediately.",
@@ -996,14 +990,14 @@ response = client.models.generate_content(
         ]
     },
     {
-        "num": "24", "name": "ReportLab & Docker Compose", "pkg": "reportlab >= 4.2.0, docker-compose.yml",
-        "layer": "Layer 5: DevOps & Automated Docs", "status": "Active / Configured", "color": CYAN, "bg": CYAN_BG,
-        "upstream": "System Design & Container Specs", "downstream": "PDF Specification & Multi-Container Stack",
-        "summary": "Combines programmatic PDF engineering documentation via ReportLab (`generate_design_spec.py`) with multi-container service orchestration via Docker Compose (`PostgreSQL`, `Qdrant`, `FastAPI`, `Vite`).",
+        "num": "24", "name": "ReportLab, Docker & GitHub CI", "pkg": "reportlab >= 5.0.0, docker-compose, .github/workflows/ci.yml",
+        "layer": "Layer 5: DevOps, CI/CD & Automated Docs", "status": "Active (121 Unit + 3 E2E Tests)", "color": CYAN, "bg": CYAN_BG,
+        "upstream": "Codebase, Test Suite & Container Specs", "downstream": "PDF Specs, CI Pipeline & 4-Container Stack",
+        "summary": "Combines programmatic 70-page PDF engineering documentation via ReportLab, 4-service Docker Compose orchestration, and dual GitHub Actions CI workflows running Python linting (Ruff), 121 verification tests, TypeScript checks, and Vite builds.",
         "files": [
-            ("generate_design_spec.py", "Compiles the architectural design specification and benchmark telemetry PDF using ReportLab Platypus."),
-            ("docker-compose.yml", "Defines the 4-container topology (postgres, qdrant, backend, frontend) with shared networks and volumes."),
-            ("package.json", "Root convenience scripts for launching both frontend and backend services concurrently.")
+            ("generate_70_page_tech_stack_pdf.py & generate_design_spec.py", "Programmatically compiles the 70-page stack manual and design spec PDF."),
+            ("docker-compose.yml", "Defines the 4-container topology (postgres, qdrant, backend, frontend)."),
+            (".github/workflows/ci.yml & rag-ci.yml", "Automated CI validating Ruff lint, 121 unit tests, tsc --noEmit, Vite build, and Docker.")
         ],
         "code_title": "docker-compose.yml — Full-Stack 4-Container Topology",
         "code": """version: '3.9'
@@ -1065,9 +1059,9 @@ def draw_cover_page(c, doc):
     # Pill Badges in Banner
     pills = [
         ("24 Components Audited", "#1E293B", "#38BDF8"),
-        ("5 Architectural Layers", "#1E293B", "#34D399"),
-        ("Hybrid RAG + NLI Gate", "#1E293B", "#FBBF24"),
-        ("70-Page Exhaustive Edition", "#1E293B", "#C084FC")
+        ("12 Features Implemented", "#1E293B", "#34D399"),
+        ("CVE + Governance Suite", "#1E293B", "#FBBF24"),
+        ("121 Unit + 3 E2E Tests", "#1E293B", "#C084FC")
     ]
     px = LM
     for text_label, bg_hex, fg_hex in pills:
@@ -1181,10 +1175,10 @@ def build_70_page_pdf():
           "checked against official village records before it is shown.", st_lede),
         styled_table([
             ["Metric", "Value", "Architectural Significance"],
-            ["Audited Technologies", "24 Components", "Spanning React 19 UI, FastAPI, PostgreSQL/SQLite, Qdrant, Gemini, and DeBERTa NLI"],
-            ["Architecture Layers", "5 Distinct Tiers", "1. Frontend SPA, 2. Backend Gateway, 3. Dual Data Store, 4. AI/RAG, 5. DevOps/Docs"],
-            ["Embedding Dimensions", "384 Dimensions", "L2-normalized cosine vectors generated via Sentence-Transformers (all-MiniLM-L6-v2)"],
-            ["Verification Outcomes", "3 Deterministic Gates", "SHOW (Supported, P >= 0.70), CORRECT (Contradicted), ABSTAIN (Insufficient Evidence)"]
+            ["Audited Technologies", "24 Components", "Spanning React 19 UI, FastAPI (13 routers), PostgreSQL/SQLite, Qdrant, Gemini, DeBERTa NLI"],
+            ["Architecture Layers", "5 Distinct Tiers", "1. Frontend SPA, 2. Backend Gateway, 3. Dual Data Store, 4. AI/CVE/Governance, 5. DevOps/CI"],
+            ["Implemented Capabilities", "Features 1 – 12", "RAG, SBD Extraction, NLI, Confidence, Correction, Abstention, Citations, Verification & Governance"],
+            ["Automated Test Coverage", "121 Unit + 3 E2E", "Full verification engine suite, RBAC isolation tests, and Vite/TypeScript production builds"]
         ], [130, 110, CW - 240]),
         Spacer(1, 10),
         P("Five-Layer System Summary", st_h2),
@@ -1246,21 +1240,21 @@ def build_70_page_pdf():
                                                │  REST | JSON | JWT Bearer (HS256)
                                                ▼
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ BACKEND  |  FastAPI Gateway                                                    Port 8000 │
-│ [FastAPI] [Uvicorn ASGI] [Pydantic v2] [Pydantic-Settings] [python-jose] [Passlib/bcrypt]│
+│ BACKEND  |  FastAPI Gateway (13 Modular Routers)                               Port 8000 │
+│ [Auth/Users/Complaints/Docs/AI] [Verification Center (F8)] [Feedback (F9)] [KB/Audit/ML] │
 └───────────────┬──────────────────────────────┼──────────────────────────────┬────────────┘
                 ▼                              ▼                              ▼
 ┌──────────────────────────────┐ ┌──────────────────────────────┐ ┌────────────────────────┐
-│ RELATIONAL STORE             │ │ VECTOR STORE                 │ │ INGESTION ENGINE       │
-│ Complaints, users, audit logs│ │ Circular & scheme embeddings │ │ PDF and DOCX to chunks │
-│ [SQLAlchemy 2.0]             │ │ [Qdrant] [384-d cosine]      │ │ [PyMuPDF] [python-docx]│
-│ [PostgreSQL 15] [SQLite]     │ │ [In-memory fallback]         │ │ [250w / 40w overlap]   │
+│ RELATIONAL & GOVERNANCE DB   │ │ VECTOR STORE                 │ │ INGESTION & VERSIONING │
+│ Complaints, Citations, Audit │ │ village_knowledge_base       │ │ PyMuPDF + python-docx  │
+│ [SQLAlchemy 2.0]             │ │ [Qdrant] [384-d cosine]      │ │ [Token-calibrated +    │
+│ [PostgreSQL 15] [SQLite]     │ │ [In-memory fallback]         │ │  DocumentVersion (F10)]│
 └───────────────┬──────────────┘ └──────────────┬───────────────┘ └───────────┬────────────┘
                 └──────────────────────────────┼──────────────────────────────┘
                                                ▼
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ AI / RAG & VERIFICATION LAYER                                                            │
-│ [Hybrid Retriever] ──► [MiniLM-L6-v2 Embeddings] ──► [Gemini 2.5 Flash] ──► [NLI Gate]   │
+│ AI / RAG / CLAIM VERIFICATION ENGINE (CVE) & GOVERNANCE                                  │
+│ [Abstention Tier 1] ──► [Hybrid RAG + Gemini 2.5] ──► [DeBERTa-v3 NLI + Citations (F7)]  │
 └──────────────────────────────────────────────────────────────────────────────────────────┘"""),
         Spacer(1, 10),
         P("Inter-Layer Communication Contracts", st_h2),
@@ -1313,20 +1307,20 @@ def build_70_page_pdf():
         P("Complete audit of Layer 1 (Frontend SPA) and Layer 2 (Backend Gateway) dependencies, relative file paths, and status.", st_lede),
         styled_table([
             ["Technology", "Package / Version", "Where & Why It Is Used", "Key Files", "Status"],
-            ["React 19", "react, react-dom ^19.0", "Core rendering engine for citizen portals, grievance tables, AI chat, and telemetry.", "src/main.tsx, App.tsx, pages/*", "Active (Port 5173)"],
-            ["Vite 8", "vite, @vitejs/plugin-react", "Instant HMR, TypeScript/JSX compilation, and production static asset packaging.", "vite.config.js, package.json", "Active"],
-            ["React Router v7", "react-router-dom ^7.0", "Declarative client navigation across 14+ views (citizen, panchayat, AI telemetry, KB).", "src/App.tsx, components/Sidebar.jsx", "Active"],
-            ["Tailwind CSS v4", "tailwindcss, @tailwindcss/vite", "Utility-first styling with civic-tech tokens (emerald, slate, cobalt) and responsive grids.", "src/index.css, vite.config.js", "Active"],
-            ["Lucide React", "lucide-react", "Vector icons for status pills, SLA indicators, upload previews, and verification badges.", "src/components/*, AIMonitoringPage.tsx", "Active"],
-            ["Recharts", "recharts", "SVG donut charts for verification outcomes (SUPPORTED/CONTRADICTED/ABSTAIN) & bar graphs.", "AIMonitoringPage.tsx, ResearchDashboard.jsx", "Active"],
-            ["TanStack Query", "@tanstack/react-query", "Server-state management, cache invalidation, and background sync for complaints & AI.", "src/App.tsx, pages/admin/*", "Active"],
-            ["Axios", "axios", "HTTP client injecting JWT Bearer tokens into every authenticated request to FastAPI.", "src/api/client.js, services/*", "Active (8000/api)"],
-            ["RHF + Zod", "react-hook-form, zod", "Type-safe validation for grievance submission (ward, description, priority) & auth screens.", "SubmitComplaintPage.jsx, RegisterPage.jsx", "Active"],
-            ["FastAPI", "fastapi", "High-concurrency ASGI REST framework for business endpoints, auth, uploads, and RAG.", "backend/app/main.py, api/*", "Active (Port 8000)"],
-            ["Uvicorn", "uvicorn[standard]", "Asynchronous ASGI server hosting FastAPI with auto-reload and worker management.", "backend/app/main.py, package.json", "Active"],
-            ["Pydantic v2", "pydantic, pydantic-settings", "Strictly typed request/response contracts and .env configuration management.", "backend/app/config.py, schemas/*", "Active"],
+            ["React 19", "react, react-dom ^19.2.8", "Core rendering engine for citizen portals, grievance tables, AI chat, citations, & admin telemetry.", "src/main.tsx, App.tsx, pages/*", "Active (Port 5173)"],
+            ["Vite 8", "vite ^8.3.0, typescript ^7.0", "Instant HMR, TypeScript 7 type-checking, and production static asset packaging.", "vite.config.js, package.json", "Active"],
+            ["React Router v7", "react-router-dom ^7.18.4", "Declarative client navigation across 14+ views (citizen, panchayat, AI telemetry, KB).", "src/App.tsx, components/Sidebar.jsx", "Active"],
+            ["Tailwind CSS v4", "tailwindcss ^4.3.3", "Utility-first styling with civic-tech tokens (emerald, slate, cobalt) and responsive grids.", "src/index.css, vite.config.js", "Active"],
+            ["Lucide React", "lucide-react ^1.52.0", "Vector icons for status pills, SLA indicators, upload previews, and verification badges.", "src/components/*, AIMonitoringPage.tsx", "Active"],
+            ["Recharts", "recharts ^3.10.1", "SVG donut charts for verification outcomes (SUPPORTED/CONTRADICTED/ABSTAIN) & bar graphs.", "AIMonitoringPage.tsx, ResearchDashboard.jsx", "Active"],
+            ["TanStack Query", "@tanstack/react-query ^5.104", "Server-state management, cache invalidation, and background sync for complaints & AI.", "src/App.tsx, pages/admin/*", "Active"],
+            ["Axios", "axios ^1.20.0", "HTTP client injecting JWT Bearer tokens across core & Features 8-12 governance APIs.", "src/api/client.js, adminService.ts", "Active (8000/api)"],
+            ["RHF + Zod", "react-hook-form ^7.89, zod ^4.6", "Type-safe validation for grievance submission (ward, description, priority) & auth screens.", "SubmitComplaintPage.jsx, RegisterPage.jsx", "Active"],
+            ["FastAPI", "fastapi >= 0.110.0", "ASGI REST framework hosting 13 routers (complaints, AI/CVE, verification, feedback, KB, audit, models).", "backend/app/main.py, api/*", "Active (Port 8000)"],
+            ["Uvicorn", "uvicorn[standard] >= 0.28", "Asynchronous ASGI server hosting FastAPI with auto-reload and worker management.", "backend/app/main.py", "Active"],
+            ["Pydantic v2", "pydantic >= 2.6, settings", "Strictly typed request/response contracts for CVE, citations, feedback, KB, audit & models.", "backend/app/config.py, schemas/*", "Active"],
             ["Python-JOSE", "python-jose[cryptography]", "JWT (HS256) token signing and expiration checks for stateless authentication.", "backend/app/api/auth.py", "Active"],
-            ["Passlib + Bcrypt", "passlib[bcrypt], bcrypt", "Salted password hashing and Role-Based Access Control (Citizen, Staff, Admin).", "backend/app/api/auth.py, models/user.py", "Active"]
+            ["Passlib + Bcrypt", "passlib[bcrypt], bcrypt >= 4.1", "Salted password hashing & 5-role RBAC (Citizen, Staff, Official, Admin, Researcher).", "backend/app/api/auth.py, models/user.py", "Active"]
         ], [70, 95, 175, 105, CW - 445], vpad=2.8, hpad=6, font_size=7.4, leading=9.5)
     ]
     story.append(PageBreak())
@@ -1338,17 +1332,17 @@ def build_70_page_pdf():
         P("Complete audit of Layer 3 (Data Stores), Layer 4 (AI/RAG & NLI Gate), and Layer 5 (DevOps & Docs).", st_lede),
         styled_table([
             ["Technology", "Package / Version", "Where & Why It Is Used", "Key Files", "Status"],
-            ["SQLAlchemy 2.0", "sqlalchemy >= 2.0", "Declarative ORM entities, ACID transactions, automated seeding, and SQL compilation.", "database/session.py, backend/app/models/*", "Active"],
-            ["PostgreSQL 15", "psycopg2, postgres:15-alpine", "Primary relational system of record for users, complaints, routing, SLAs, and AI logs.", "database/session.py, docker-compose.yml", "Configured (Docker)"],
+            ["SQLAlchemy 2.0", "sqlalchemy >= 2.0.28", "Declarative ORM across 21+ tables (grievances, citations, F9–F12 governance).", "database/session.py, backend/app/models/*", "Active"],
+            ["PostgreSQL 15", "postgres:15-alpine", "Primary relational system of record for users, complaints, SLAs, and audit trails.", "database/session.py, docker-compose.yml", "Configured (Docker)"],
             ["SQLite Fallback", "sqlite3 (Stdlib)", "Zero-setup embedded fallback database when PostgreSQL daemon is offline.", "database/session.py, data/village_grievance.db", "Active (Live DB)"],
-            ["Qdrant", "qdrant-client, qdrant/qdrant", "Stores 384-d cosine embeddings and payloads for circulars, schemes, and complaints.", "services/qdrant_service.py, docker-compose.yml", "Active (+ :memory:)"],
+            ["Qdrant", "qdrant-client >= 1.8.0", "Stores 384-d cosine vectors in `village_knowledge_base` (+ metadata filtering).", "services/qdrant_service.py, docker-compose.yml", "Active (+ :memory:)"],
             ["Sentence-BERT", "sentence-transformers (MiniLM)", "Generates 384-d semantic vectors for document chunks and queries (+ fallback vector).", "services/embedding_service.py", "Active"],
-            ["PyMuPDF + docx", "PyMuPDF (fitz), python-docx", "Parses PDF circulars and DOCX guidelines into overlapping chunks (250w, 40w overlap).", "services/document_parser.py", "Active"],
-            ["Google Gemini", "google-genai (gemini-2.5-flash)", "Synthesizes grounded answers with explicit atomic claim decomposition (+ rule fallback).", "services/llm_service.py", "Active"],
-            ["NLI Gate", "DeBERTa-v3 NLI Architecture", "Checks each claim against evidence, detects contradictions, triggers correction/abstention.", "contradiction_detector.py, validator.py, decision_engine.py", "Active"],
-            ["Benchmark Suite", "Comparative Evaluator", "3-way ablation: baseline LLM vs standard RAG vs RAG + NLI on accuracy & hallucination.", "evaluation/evaluator.py, benchmark_questions.py", "Active"],
-            ["ReportLab", "reportlab", "Programmatically compiles the editorial system design specification and benchmark PDF.", "generate_design_spec.py", "Active"],
-            ["Docker Compose", "docker, docker-compose.yml", "Orchestrates PostgreSQL, Qdrant, FastAPI, and Vite containers with persistent volumes.", "docker-compose.yml", "Configured"]
+            ["PyMuPDF + docx", "PyMuPDF >= 1.23, docx >= 1.1", "Token-calibrated PDF/DOCX extraction, SHA-256 dedup & KB versioning (F10).", "document_parser.py, api/knowledge_base.py", "Active"],
+            ["Google Gemini", "google-genai (gemini-2.5-flash)", "Synthesizes grounded answers with atomic claims & negative-constraint retries.", "services/llm_service.py, correction/*", "Active"],
+            ["CVE + Provenance", "DeBERTa-v3 NLI + DB Verifier", "SBD extraction, 3-tier abstention, composite confidence, 2-retry correction & citations.", "backend/app/verification/* (121 unit tests)", "Active"],
+            ["Governance (F8–12)", "Admin & Research Subsystem", "7-question Verification Center, Citizen Feedback Review, UUID Audit Traces & Model Registry.", "verification_center, feedback, kb, audit, model_config", "Active"],
+            ["ReportLab", "reportlab >= 5.0.0", "Programmatically compiles the 70-page stack map & design specification PDFs.", "generate_70_page_tech_stack_pdf.py", "Active"],
+            ["Docker + Git CI", "docker-compose, ci.yml", "4-container orchestration + GitHub Actions (Ruff, 121 unit + 3 E2E, tsc, Vite).", "docker-compose.yml, .github/workflows/ci.yml", "Active / CI"]
         ], [78, 95, 165, 105, CW - 443]),
         Spacer(1, 10),
         info_box("Active vs. Configured Status Definitions",
@@ -1363,47 +1357,42 @@ def build_70_page_pdf():
         P("Dependency Manifest Audit: package.json & requirements.txt", st_h1),
         P("Exact manifest declarations audited from the root orchestration config, frontend package.json, and backend requirements.txt.", st_lede),
         code_card("frontend/package.json — Audited Frontend Dependencies", """{
-  "name": "village-grievance-frontend",
+  "name": "frontend",
   "private": true,
-  "version": "2.4.0",
+  "version": "0.0.0",
   "type": "module",
-  "scripts": {
-    "dev": "vite --port 5173",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
+  "scripts": { "dev": "vite", "build": "vite build", "lint": "oxlint", "preview": "vite preview" },
   "dependencies": {
-    "@hookform/resolvers": "^3.9.1",
-    "@tailwindcss/vite": "^4.0.0",
-    "@tanstack/react-query": "^5.66.0",
-    "axios": "^1.7.9",
-    "lucide-react": "^0.475.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-hook-form": "^7.54.0",
-    "react-router-dom": "^7.1.0",
-    "recharts": "^2.15.0",
-    "tailwindcss": "^4.0.0",
-    "zod": "^3.24.0"
+    "@hookform/resolvers": "^5.9.1", "@tanstack/react-query": "^5.104.1",
+    "axios": "^1.20.0", "clsx": "^2.1.1", "lucide-react": "^1.52.0",
+    "react": "^19.2.8", "react-dom": "^19.2.8", "react-hook-form": "^7.89.0",
+    "react-router-dom": "^7.18.4", "recharts": "^3.10.1", "tailwind-merge": "^3.7.0", "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3", "@vitejs/plugin-react": "^6.1.1",
+    "oxlint": "^1.81.0", "tailwindcss": "^4.3.3", "typescript": "^7.0.2", "vite": "^8.3.0"
   }
 }"""),
         Spacer(1, 8),
-        code_card("backend/requirements.txt — Audited Backend & AI Dependencies", """fastapi>=0.115.0
-uvicorn[standard]>=0.32.0
-pydantic>=2.9.0
-pydantic-settings>=2.6.0
-sqlalchemy>=2.0.35
-psycopg2-binary>=2.9.9
+        code_card("backend/requirements.txt — Audited Backend & AI Dependencies", """fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+email-validator>=2.0.0
+sqlalchemy>=2.0.28
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
-bcrypt>=4.0.0
-python-multipart>=0.0.12
-qdrant-client>=1.12.0
-sentence-transformers>=3.2.0
-PyMuPDF>=1.24.0
-python-docx>=1.1.2
-google-genai>=0.3.0
-reportlab>=4.2.0""")
+bcrypt>=4.1.2
+python-multipart>=0.0.9
+qdrant-client>=1.8.0
+sentence-transformers>=2.5.1
+numpy>=1.26.0
+google-genai>=0.1.1
+PyMuPDF>=1.23.0
+python-docx>=1.1.0
+httpx>=0.27.0
+pytest>=8.0.0
+reportlab>=5.0.0""")
     ]
     story.append(PageBreak())
 
@@ -1517,25 +1506,27 @@ volumes:
         P("How `.env` settings, root `package.json` scripts, and Python virtual environments coordinate across the monorepo.", st_lede),
         styled_table([
             ["Environment Variable", "Default Value in config.py", "Consumed By", "Purpose"],
-            ["DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/village_grievance", "database/session.py", "Primary PostgreSQL 15 connection URI"],
-            ["SQLITE_FALLBACK_URL", "sqlite:///./data/village_grievance.db", "database/session.py", "Automatic embedded SQLite fallback path"],
-            ["QDRANT_URL", "http://localhost:6333", "services/qdrant_service.py", "Qdrant HTTP REST endpoint"],
-            ["EMBEDDING_MODEL", "all-MiniLM-L6-v2", "services/embedding_service.py", "384-d Sentence-Transformers model name"],
-            ["GEMINI_API_KEY", "(Loaded from .env)", "services/llm_service.py", "Google Gemini 2.5 Flash API authentication"],
-            ["SECRET_KEY", "village-grievance-super-secret-jwt-key", "api/auth.py", "HS256 HMAC signing secret for JWT tokens"],
-            ["NLI_ENTAILMENT_THRESHOLD", "0.70", "hallucination/decision_engine.py", "Minimum entailment score required for SHOW verdict"]
+            ["DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/village_grievance", "database/session.py", "Primary PostgreSQL 15 URI (auto-falls back to SQLite)"],
+            ["QDRANT_HOST / PORT", "localhost / 6333", "services/qdrant_service.py", "Qdrant HTTP/gRPC endpoint (falls back to :memory:)"],
+            ["QDRANT_COLLECTION", "village_knowledge_base", "services/qdrant_service.py", "384-d cosine vector collection for village circulars"],
+            ["EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2", "services/embedding_service.py", "384-d Sentence-Transformers model identifier"],
+            ["LLM_API_KEY / LLM_MODEL", "(env) / gemini-2.5-flash", "services/llm_service.py", "Google Gemini API key and generative model"],
+            ["JWT_SECRET / ALGORITHM", "super-secret-key-... / HS256", "api/auth.py", "HMAC-SHA256 signing secret (24h expiry)"],
+            ["UPLOAD_DIR", "backend/data/uploads", "api/documents.py & kb.py", "Persistent local file storage for uploaded documents"]
         ], [115, 155, 110, CW - 380]),
         Spacer(1, 10),
-        code_card("Root package.json — Monorepo Concurrent Startup Scripts", """{
-  "name": "evidence-grounded-village-grievance-system",
-  "private": true,
-  "scripts": {
-    "dev:frontend": "cd frontend && npm run dev",
-    "dev:backend": "cd backend && uvicorn app.main:app --reload --port 8000",
-    "generate:spec": "python generate_design_spec.py",
-    "docker:up": "docker compose up -d"
-  }
-}""")
+        code_card(".github/workflows/ci.yml — Automated CI/CD Validation Matrix", """jobs:
+  backend-checks:
+    steps:
+      - run: ruff check backend/app
+      - run: python -m unittest discover -s tests/verification -p "test_*.py" -v  # 121 tests
+      - run: python tests/run_tests.py                                          # 3 E2E regression tests
+  frontend-checks:
+    steps:
+      - run: npx tsc --noEmit && npm run build
+  docker-validate:
+    steps:
+      - run: docker compose config""")
     ]
     story.append(PageBreak())
 
@@ -1577,15 +1568,15 @@ volumes:
         P("Security Architecture, CORS & Access Matrix", st_h1),
         P("End-to-end security controls spanning CORS origin whitelisting, JWT bearer validation, bcrypt hashing, and role isolation.", st_lede),
         styled_table([
-            ["System Capability / Endpoint", "Citizen Role", "Panchayat Staff Role", "System Admin Role"],
-            ["Submit Grievance & Upload Photo", "Allowed (POST /api/complaints)", "Allowed", "Allowed"],
-            ["View Own Complaint Status", "Allowed (GET /api/complaints/my)", "Allowed (All Ward Complaints)", "Allowed (All Complaints)"],
-            ["Triage & Assign Department", "Denied (HTTP 403)", "Allowed (PATCH /triage)", "Allowed (PATCH /triage)"],
-            ["Query Grounded AI Assistant", "Allowed (POST /api/ai/ask)", "Allowed", "Allowed"],
-            ["Upload Official Scheme PDFs/DOCX", "Denied (HTTP 403)", "Denied (HTTP 403)", "Allowed (POST /api/documents)"],
-            ["View NLI Verification Telemetry", "Denied (HTTP 403)", "Read-Only", "Full Access (GET /api/ai/telemetry)"],
-            ["Run 3-Way Ablation Benchmarks", "Denied (HTTP 403)", "Denied (HTTP 403)", "Allowed (POST /api/evaluation/run)"]
-        ], [155, 110, 115, CW - 380]),
+            ["System Capability / Endpoint", "Citizen Role", "Staff / Official Role", "Admin / Researcher Role"],
+            ["Submit & View Own Grievances", "Allowed (POST/GET /complaints)", "Allowed (All Assigned)", "Allowed (All Complaints)"],
+            ["Query Grounded AI + Citations", "Allowed (POST /api/ai/query)", "Allowed", "Allowed (+ /sources, /citations)"],
+            ["Submit Citizen AI Feedback (F9)", "Allowed (POST /api/feedback)", "Allowed + Review (PUT /review)", "Full Triage & Root-Cause Stats"],
+            ["KB Versioning & Expiry (F10)", "Denied (HTTP 403)", "Upload / Reindex Versions", "Admin Approve / Reject / Stats"],
+            ["Verification Center (F8)", "Denied (HTTP 403)", "Read-Only Inspection", "Full 7-Question Drilldown & Audit"],
+            ["Audit Logs & Traces (F11)", "Denied (HTTP 403)", "Denied (HTTP 403)", "Full Access (/admin/audit/*)"],
+            ["Model & RAG Registry (F12)", "Denied (HTTP 403)", "Denied (HTTP 403)", "Researcher: Eval | Admin: Approve"]
+        ], [155, 105, 110, CW - 370]),
         Spacer(1, 10),
         info_box("Data Privacy in Vector Space",
                  "Personal citizen identifiers (phone numbers, email hashes) are kept strictly inside the SQLAlchemy relational "
@@ -1794,36 +1785,30 @@ db.commit()""")
         P("06  CODEBASE DIRECTORY & DEFENSE GUIDE (PART 1 OF 4)", st_kicker),
         P("Complete Repository File-Tree Audit", st_h1),
         P("Every directory and key source file across the project workspace mapped to its architectural responsibility.", st_lede),
-        code_card("Workspace Directory Tree (Evidence-Grounded Village Grievance Redressal System)", """Evidence-Grounded Village Grievance Redressal System/
-├── package.json                          # Root scripts & workspace orchestration
+        code_card("Workspace Directory Tree (Features 1–12 Full-Stack Layout)", """Evidence-Grounded Village Grievance Redressal System/
+├── .github/workflows/ci.yml & rag-ci.yml # Automated CI (Ruff, 121 unit + 3 E2E, tsc, Vite, Docker)
 ├── docker-compose.yml                    # PostgreSQL 15, Qdrant, FastAPI & Vite containers
-├── generate_design_spec.py               # ReportLab PDF specification generator
+├── generate_70_page_tech_stack_pdf.py    # ReportLab 70-page Technology Stack Manual compiler
 ├── frontend/
-│   ├── package.json                      # React 19, Vite 8, Tailwind v4, Recharts, Axios, Zod
-│   ├── vite.config.js                    # Vite 8 bundler + @tailwindcss/vite configuration
+│   ├── package.json                      # React 19.2, Vite 8.3, Tailwind v4.3, Recharts 3.10, Zod 4.6
 │   └── src/
-│       ├── main.tsx                      # React 19 root mount & QueryClientProvider
-│       ├── App.tsx                       # React Router v7 routes & RBAC layout guards
-│       ├── index.css                     # Tailwind CSS v4 imports & civic theme tokens
-│       ├── api/client.js                 # Axios instance + JWT Bearer request interceptor
-│       ├── context/AuthContext.jsx       # User authentication & role state context
-│       ├── services/                     # Typed API service modules (ai.ts, complaints.js)
-│       ├── components/                   # Sidebar.jsx, Navbar, StatusBadge, CitationChip
-│       └── pages/                        # Citizen Portal, Submit, Track, AI Chat, Admin Views
-│           └── admin/AIMonitoringPage.tsx# Live NLI Telemetry, Donut & Category Faithfulness
+│       ├── main.tsx & App.tsx            # React 19 root mount, QueryClientProvider & routes
+│       ├── services/adminService.ts      # Complete TypeScript API client (Features 8–12)
+│       └── pages/admin/AIMonitoringPage.tsx # Live NLI Telemetry, Donut & Category Faithfulness
 └── backend/
-    ├── requirements.txt                  # FastAPI, SQLAlchemy, Qdrant, MiniLM, Gemini, PyMuPDF
+    ├── requirements.txt                  # FastAPI, SQLAlchemy, Qdrant, MiniLM, DeBERTa, Gemini, ReportLab
+    ├── tests/
+    │   ├── run_tests.py                  # End-to-end integration & regression suite (3 E2E tests)
+    │   └── verification/                 # 12 test suites covering Features 2–12 (121 unit tests)
     └── app/
-        ├── main.py                       # FastAPI gateway entry point & CORS middleware
-        ├── config.py                     # Pydantic-Settings environment configuration
-        ├── database/session.py           # SQLAlchemy 2.0 engine (Postgres + SQLite fallback)
-        ├── models/                       # User, Complaint, Document, AIResponse, Verification
-        ├── schemas/                      # Pydantic v2 request/response data contracts
-        ├── api/                          # REST routers (auth, complaints, ai, documents, eval)
-        ├── services/                     # embedding_service, qdrant_service, llm_service, parser
-        ├── rag/pipeline.py               # End-to-end Hybrid RAG + NLI orchestration pipeline
-        ├── hallucination/                # contradiction_detector, validator, decision_engine
-        └── evaluation/                   # evaluator.py & benchmark_questions.py (3-way ablation)""")
+        ├── main.py & config.py           # FastAPI gateway (13 routers) & Pydantic-Settings
+        ├── database/session.py           # SQLAlchemy 2.0 engine (PostgreSQL + SQLite fallback)
+        ├── models/                       # user, complaint, document, ai_records, feedback, kb, audit, model_config
+        ├── schemas/                      # Pydantic v2 contracts for core, citations, center & F9–12
+        ├── api/                          # 13 REST routers (incl. verification_center, feedback, kb, audit, model_config)
+        ├── services/                     # embedding_service, qdrant_service, hybrid_retriever, llm_service, parser
+        ├── rag/pipeline.py               # Hybrid RAG + Abstention + CVE + Correction + Citation orchestrator
+        └── verification/                 # Modular CVE: extraction, evidence, models, engine, correction, abstention, citation""")
     ]
     story.append(PageBreak())
 
@@ -1861,9 +1846,9 @@ db.commit()""")
             ["Average Latency", "820 ms", "1,180 ms", "1,440 ms", "Mean end-to-end wall-clock execution time from query receipt to verified output."]
         ], [95, 82, 82, 88, CW - 347]),
         Spacer(1, 10),
-        info_box("Key Research Takeaway",
-                 "Standard RAG (Config B) reduces hallucinations from 41.6% to 15.8%, but still suffers from residual factual drift. "
-                 "Adding the NLI Verification Gate (Config C) eliminates ungrounded outputs (0.0%) at a modest +260ms latency cost.",
+        info_box("Key Research Takeaway & Verification Suite Coverage",
+                 "Standard RAG (Config B) reduces hallucinations from 41.6% to 15.8%, while the Claim Verification Engine (Config C) "
+                 "eliminates ungrounded outputs (0.0%) and reaches 100% abstention accuracy—verified across 121 unit tests and 3 E2E regression tests.",
                  accent=PURPLE, bg=PURPLE_BG)
     ]
     story.append(PageBreak())
@@ -1885,8 +1870,8 @@ db.commit()""")
              "`hybrid_retriever.py` finds no matching SQL record and low Qdrant similarity. `decision_engine.py` triggers the `INSUFFICIENT -> ABSTAIN` gate and outputs: 'I could not find sufficient verified information in village records to answer this question.'"],
             ["5. Why did you use FastAPI instead of Django or Flask?",
              "FastAPI provides native ASGI asynchronous concurrency (via Uvicorn), automatic Pydantic v2 request/response validation, and auto-generated OpenAPI Swagger docs (`/docs`), which keeps end-to-end RAG + NLI latency under 1.5 seconds."],
-            ["6. How do you prove that RAG + NLI is better than a normal LLM?",
-             "`evaluation/evaluator.py` runs an automated 3-way ablation benchmark comparing Standalone LLM (58.4% accuracy, 41.6% hallucination), Standard RAG (84.2% accuracy, 15.8% hallucination), and RAG + NLI Verification (98.1% accuracy, 0.0% ungrounded claims)."]
+            ["6. How do you verify, audit, and govern the AI pipeline in production?",
+             "Features 7–12 bind inline citations (`ai_response_citations`), expose a 7-question Verification Center (`/admin/verification/*`), capture citizen feedback root causes (`ai_feedback`), manage document versions & expiry (`document_versions`), trace requests by UUID (`audit_events`, `ai_request_audits`), and gate model/RAG promotions via benchmark evaluations (`configuration_evaluations`). All 121 unit tests + 3 E2E tests pass in CI."]
         ], [145, CW - 145])
     ]
 

@@ -1,0 +1,13 @@
+# Exclude local caches, heavy docs, and build outputs from Vercel upload
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+frontend/node_modules
+frontend/dist
+backend/data
+backend/tests
+*.pdf
+generate_70_page_tech_stack_pdf.py
+generate_design_spec.py
+.github
+.git

@@ -28,7 +28,11 @@ def get_engine():
     except Exception as e:
         logger.warning(f"Could not connect to PostgreSQL ({e}). Falling back to SQLite database.")
 
-    db_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data"))
+    db_dir = (
+        "/tmp/village_data"
+        if os.getenv("VERCEL")
+        else os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data"))
+    )
     os.makedirs(db_dir, exist_ok=True)
     sqlite_url = f"sqlite:///{os.path.join(db_dir, 'village_grievance.db')}"
     logger.info(f"Using SQLite database at: {sqlite_url}")

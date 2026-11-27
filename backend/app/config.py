@@ -35,8 +35,12 @@ class Settings(BaseSettings):
     LLM_MODEL: str = os.getenv("LLM_MODEL", "gemini-2.5-flash")
     EMBEDDING_MODEL_NAME: str = "all-MiniLM-L6-v2"
     
-    # Uploads
-    UPLOAD_DIR: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "uploads"))
+    # Uploads (use /tmp when running on Vercel read-only serverless filesystem)
+    UPLOAD_DIR: str = (
+        "/tmp/village_uploads"
+        if os.getenv("VERCEL")
+        else os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "uploads"))
+    )
 
     class Config:
         case_sensitive = True

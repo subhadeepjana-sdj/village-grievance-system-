@@ -82,3 +82,5 @@ backend/data/village_grievance.db
 *.sw?
 .DS_Store
 Thumbs.db
+
+.vercel
