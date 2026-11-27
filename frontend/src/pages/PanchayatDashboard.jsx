@@ -23,8 +23,52 @@ import {
   Eye,
   AlertTriangle,
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  Upload,
+  Trash2,
+  Image as ImageIcon
 } from 'lucide-react';
+
+const SERVICE_CATEGORY_GROUPS = [
+  {
+    group: 'Essential Utilities',
+    options: [
+      { value: 'Water Supply', dept: 'Village Water Dept', badgeClass: 'bg-blue-50 text-blue-700 border-blue-200' },
+      { value: 'Sanitation', dept: 'Gram Swachhta Unit', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+      { value: 'Electricity', dept: 'MSEDCL Rural Division', badgeClass: 'bg-purple-50 text-purple-700 border-purple-200' },
+      { value: 'Street Lighting', dept: 'MSEDCL Rural Division', badgeClass: 'bg-yellow-50 text-yellow-800 border-yellow-200' },
+      { value: 'Drainage & Sewerage', dept: 'Gram Swachhta Unit', badgeClass: 'bg-teal-50 text-teal-700 border-teal-200' },
+    ],
+  },
+  {
+    group: 'Infrastructure & Agriculture',
+    options: [
+      { value: 'Roads & Works', dept: 'PWD Rural Sub-division', badgeClass: 'bg-amber-50 text-amber-800 border-amber-200' },
+      { value: 'Agriculture & Irrigation', dept: 'Agriculture & Irrigation Dept', badgeClass: 'bg-lime-50 text-lime-800 border-lime-200' },
+      { value: 'Public Buildings & Schools', dept: 'PWD Rural Sub-division', badgeClass: 'bg-orange-50 text-orange-800 border-orange-200' },
+    ],
+  },
+  {
+    group: 'Health, Welfare & Schemes',
+    options: [
+      { value: 'Public Health & Clinics', dept: 'Public Health & Schemes', badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
+      { value: 'Govt Schemes', dept: 'Public Health & Schemes', badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+      { value: 'Ration & PDS', dept: 'Public Health & Schemes', badgeClass: 'bg-cyan-50 text-cyan-800 border-cyan-200' },
+      { value: 'Pension & Social Welfare', dept: 'Public Health & Schemes', badgeClass: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' },
+    ],
+  },
+  {
+    group: 'Land, Revenue & Civic Services',
+    options: [
+      { value: 'Land & Revenue Records', dept: 'Gram Panchayat Secretariat', badgeClass: 'bg-stone-100 text-stone-800 border-stone-300' },
+      { value: 'Birth / Death Certificates', dept: 'Gram Panchayat Secretariat', badgeClass: 'bg-sky-50 text-sky-700 border-sky-200' },
+      { value: 'Environment & Forestry', dept: 'Agriculture & Irrigation Dept', badgeClass: 'bg-green-50 text-green-800 border-green-200' },
+      { value: 'Animal Husbandry & Veterinary', dept: 'Agriculture & Irrigation Dept', badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+    ],
+  },
+];
+
+const ALL_SERVICE_CATEGORIES = SERVICE_CATEGORY_GROUPS.flatMap((g) => g.options);
 
 const DEFAULT_DEPARTMENTS = [
   { id: 1, name: 'Village Water Dept' },
@@ -161,6 +205,9 @@ export const PanchayatDashboard = () => {
   const [manualCitizenName, setManualCitizenName] = useState('');
   const [manualCitizenPhone, setManualCitizenPhone] = useState('');
   const [manualDescription, setManualDescription] = useState('');
+  const [manualImageFile, setManualImageFile] = useState(null);
+  const [manualImagePreview, setManualImagePreview] = useState('');
+  const [manualImageError, setManualImageError] = useState('');
   const [creating, setCreating] = useState(false);
 
   // Action Menu Dropdown State (per row)
@@ -265,6 +312,34 @@ export const PanchayatDashboard = () => {
     }
   };
 
+  const handleManualImageChange = (file) => {
+    setManualImageError('');
+    if (!file) return;
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setManualImageError('Please select a PNG, JPG, JPEG, or WEBP image.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setManualImageError('Image exceeds maximum size of 10 MB.');
+      return;
+    }
+    if (manualImagePreview && manualImagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(manualImagePreview);
+    }
+    setManualImageFile(file);
+    setManualImagePreview(URL.createObjectURL(file));
+  };
+
+  const clearManualImage = () => {
+    if (manualImagePreview && manualImagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(manualImagePreview);
+    }
+    setManualImageFile(null);
+    setManualImagePreview('');
+    setManualImageError('');
+  };
+
   // Submit Manual Grievance
   const handleCreateManualGrievance = async (e) => {
     e.preventDefault();
@@ -273,6 +348,7 @@ export const PanchayatDashboard = () => {
     setCreating(true);
     const newSeq = Math.floor(1000 + Math.random() * 9000);
     const newId = `GRV-2026-00${newSeq}`;
+    const matchedCategory = ALL_SERVICE_CATEGORIES.find((c) => c.value === manualCategory);
 
     const newRecord = {
       id: newSeq,
@@ -284,7 +360,7 @@ export const PanchayatDashboard = () => {
       landmark: 'Gram Panchayat Counter Log',
       status: 'UNDER_REVIEW',
       department_id: 1,
-      department_name: 'Village Water Dept',
+      department_name: matchedCategory?.dept || 'Village Water Dept',
       assigned_officer: 'Officer Vikram Deshmukh',
       citizen_name: manualCitizenName.trim() || 'Walk-in Citizen',
       citizen_phone: manualCitizenPhone.trim() || '+91 98000 00000',
@@ -292,9 +368,9 @@ export const PanchayatDashboard = () => {
       sla_countdown: '48h left',
       sla_status: 'normal',
       rag_synced: true,
-      evidence_photos: [
-        'https://images.unsplash.com/photo-1584467735871-8e85353a8413?w=800&auto=format&fit=crop&q=80'
-      ]
+      evidence_photos: manualImagePreview
+        ? [manualImagePreview]
+        : ['https://images.unsplash.com/photo-1584467735871-8e85353a8413?w=800&auto=format&fit=crop&q=80']
     };
 
     try {
@@ -303,19 +379,28 @@ export const PanchayatDashboard = () => {
       formData.append('category', newRecord.category);
       formData.append('description', newRecord.description);
       formData.append('location', newRecord.location);
-      await api.post('/complaints', formData);
+      if (manualImageFile) {
+        formData.append('file', manualImageFile);
+      }
+      const res = await api.post('/complaints', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (res?.data?.complaint_number) {
+        newRecord.complaint_number = res.data.complaint_number;
+      }
     } catch (apiErr) {
       console.warn('Saved locally to desk memory:', apiErr);
     }
 
     setComplaints(prev => [newRecord, ...prev]);
-    setMsg(`Manual grievance ${newId} logged and synced to AI Knowledge Base!`);
+    setMsg(`Manual grievance ${newRecord.complaint_number} logged and synced to AI Knowledge Base!`);
     setCreating(false);
     setLogModalOpen(false);
     setManualTitle('');
     setManualDescription('');
     setManualCitizenName('');
     setManualCitizenPhone('');
+    clearManualImage();
   };
 
   // Compute counts for status tabs
@@ -355,41 +440,19 @@ export const PanchayatDashboard = () => {
 
   // Helper for Category Badges
   const renderCategoryBadge = (category) => {
-    switch (category) {
-      case 'Water Supply':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-            Water Supply
-          </span>
-        );
-      case 'Sanitation':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            Sanitation
-          </span>
-        );
-      case 'Roads & Works':
-      case 'Roads & Infrastructure':
-      case 'Roads':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-            Roads & Works
-          </span>
-        );
-      case 'Electricity':
-      case 'Electricity & Power':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
-            Electricity
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-            {category}
-          </span>
-        );
-    }
+    const aliasMap = {
+      'Roads & Infrastructure': 'Roads & Works',
+      Roads: 'Roads & Works',
+      'Electricity & Power': 'Electricity',
+    };
+    const normalized = aliasMap[category] || category;
+    const match = ALL_SERVICE_CATEGORIES.find((c) => c.value === normalized);
+    const badgeClass = match?.badgeClass || 'bg-slate-100 text-slate-700 border-slate-200';
+    return (
+      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${badgeClass}`}>
+        {normalized}
+      </span>
+    );
   };
 
   // Helper for Status Pills
@@ -597,10 +660,13 @@ export const PanchayatDashboard = () => {
               className="px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 transition cursor-pointer"
             >
               <option value="ALL">All Categories</option>
-              <option value="Water Supply">Water Supply</option>
-              <option value="Sanitation">Sanitation</option>
-              <option value="Roads & Works">Roads & Works</option>
-              <option value="Electricity">Electricity</option>
+              {SERVICE_CATEGORY_GROUPS.map((grp) => (
+                <optgroup key={grp.group} label={grp.group}>
+                  {grp.options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.value}</option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
           </div>
         </div>
@@ -1040,9 +1106,9 @@ export const PanchayatDashboard = () => {
       {/* ─── Log Manual Grievance Modal ───────────────────────────── */}
       {logModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs transition-opacity animate-in fade-in">
-          <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto bg-white rounded-2xl border border-slate-200 shadow-2xl animate-in zoom-in-95 duration-150">
             
-            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50 sticky top-0 z-10">
               <div className="space-y-0.5">
                 <span className="text-[10px] uppercase font-extrabold tracking-wider text-blue-700">
                   Walk-in Citizen Desk
@@ -1052,7 +1118,8 @@ export const PanchayatDashboard = () => {
                 </h3>
               </div>
               <button
-                onClick={() => setLogModalOpen(false)}
+                type="button"
+                onClick={() => { clearManualImage(); setLogModalOpen(false); }}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-700 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -1081,11 +1148,15 @@ export const PanchayatDashboard = () => {
                     onChange={(e) => setManualCategory(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 transition cursor-pointer"
                   >
-                    <option value="Water Supply">Water Supply</option>
-                    <option value="Sanitation">Sanitation</option>
-                    <option value="Roads & Works">Roads & Works</option>
-                    <option value="Electricity">Electricity</option>
-                    <option value="Govt Schemes">Govt Schemes</option>
+                    {SERVICE_CATEGORY_GROUPS.map((grp) => (
+                      <optgroup key={grp.group} label={grp.group}>
+                        {grp.options.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.value}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
                   </select>
                 </div>
 
@@ -1136,10 +1207,75 @@ export const PanchayatDashboard = () => {
                 />
               </div>
 
+              {/* Image Uploading Section */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-800 block">
+                  Upload Evidence Image <span className="font-normal text-slate-400">(Optional · PNG, JPG, WEBP up to 10 MB)</span>
+                </label>
+
+                {manualImagePreview ? (
+                  <div className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-blue-200 bg-blue-50/60">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={manualImagePreview}
+                        alt="Uploaded grievance evidence"
+                        className="w-14 h-14 rounded-lg object-cover border border-slate-200 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-800 truncate">
+                          {manualImageFile?.name || 'Evidence Image'}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {manualImageFile ? `${(manualImageFile.size / 1024).toFixed(1)} KB` : 'Ready to upload'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={clearManualImage}
+                      className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition cursor-pointer shrink-0"
+                      title="Remove image"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const dropped = e.dataTransfer?.files?.[0];
+                      if (dropped) handleManualImageChange(dropped);
+                    }}
+                    className="flex flex-col items-center justify-center gap-1.5 px-4 py-4 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/70 hover:border-blue-500 hover:bg-blue-50/40 transition cursor-pointer text-center"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center">
+                      <Upload className="w-4 h-4" />
+                    </div>
+                    <span className="font-semibold text-slate-700">
+                      Click to upload photo or drag and drop
+                    </span>
+                    <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                      <ImageIcon className="w-3 h-3" /> Attach site photo from walk-in citizen or inspection
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      className="hidden"
+                      onChange={(e) => handleManualImageChange(e.target.files?.[0])}
+                    />
+                  </label>
+                )}
+
+                {manualImageError && (
+                  <p className="text-[11px] font-semibold text-rose-600">{manualImageError}</p>
+                )}
+              </div>
+
               <div className="pt-2 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setLogModalOpen(false)}
+                  onClick={() => { clearManualImage(); setLogModalOpen(false); }}
                   className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold text-xs hover:bg-slate-50 transition cursor-pointer"
                 >
                   Cancel
