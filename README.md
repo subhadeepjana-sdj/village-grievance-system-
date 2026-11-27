@@ -137,6 +137,27 @@ An evidence-grounded AI question-answering and grievance management system for r
   - `POST /api/admin/verification/feedback`: Human-in-the-loop audit feedback logging.
 - **Automated CI/CD Pipeline (`.github/workflows/ci.yml`)**: Continuous integration workflow validating Python 3.11 linting (Ruff), full 78-test verification suite, frontend TypeScript type-checking (`npx tsc --noEmit`), and Docker build validation.
 
+### Feature 9: AI Feedback & Error Review
+- **Citizen Answer Feedback (`ai_feedback` table)**: Allows citizens to rate AI answers (`HELPFUL`, `INCORRECT`, `INCOMPLETE`, `MISLEADING`) with issue descriptions and track their submitted reports (`POST /api/feedback`, `GET /api/feedback/my`).
+- **Administrative Error Investigation (`feedback_reviews` table)**: Enables administrators and staff to inspect the full interaction context (`GET /api/admin/feedback/{id}` joining AI answer, evidence chunks, and NLI claims), classify root causes (`RETRIEVAL`, `OUTDATED_DOCUMENT`, `MODEL_GENERATION`, `VERIFICATION_FAILURE`), record corrective actions, and resolve tickets (`PUT /api/admin/feedback/{id}/review`).
+- **Feedback Analytics (`GET /api/admin/feedback/stats`)**: Tracks total volume, resolution rate, feedback type breakdown, and root-cause distributions.
+
+### Feature 10: Knowledge Base Management
+- **Immutable Document Versioning (`document_versions` table)**: Maintains sequential version history per document with SHA-256 checksums, change summaries, and validity windows (`effective_from`, `effective_until`).
+- **3-Stage Processing Pipeline Tracking (`document_processing_jobs` table)**: Monitors `extraction`, `embedding`, and `indexing` states independently with chunk counts and error-stage reporting (`POST /api/admin/kb/versions/{id}/reindex`).
+- **Approval & Supersession Workflow**: Admin-gated publishing (`PUT /api/admin/kb/versions/{id}/approve`) automatically supersedes prior `PUBLISHED` versions; rejected drafts require explicit reasons (`PUT /api/admin/kb/versions/{id}/reject`).
+- **Expiry & Health Monitoring**: Identifies expiring or expired circulars within configurable lookahead windows (`GET /api/admin/kb/expiring`) and exposes aggregate metrics (`GET /api/admin/kb/stats`).
+
+### Feature 11: Audit Logs & Request Tracing
+- **Tamper-Evident System Event Trail (`audit_events` table)**: Correlates actions across user requests via UUID `trace_id`, capturing actor identity/role, event category, old/new JSON state snapshots, and timestamps (`GET /api/admin/audit/events`).
+- **AI Pipeline Execution Traces (`ai_request_audits` table)**: Logs model version, prompt version, embedding model, retrieved document/chunk IDs, claim counts, correction attempts, abstention reasons, and stage-level latencies (`GET /api/admin/audit/ai-requests`).
+- **End-to-End Trace Correlation (`GET /api/admin/audit/events/trace/{trace_id}`)**: Unifies system events and AI pipeline audits for a single citizen request alongside daily activity summaries (`GET /api/admin/audit/stats`).
+
+### Feature 12: Model & RAG Management
+- **Model, RAG & Verification Registries**: Versioned management tables (`model_configurations`, `rag_configurations`, `verification_configurations`) controlling LLM providers, chunking/`top_k`/similarity thresholds, and NLI entailment/contradiction/retry gates (`TESTING` → `ACTIVE` → `RETIRED`).
+- **Evaluation-Gated Promotion (`configuration_evaluations` table)**: Candidate configurations must record a passing benchmark evaluation (`factual_accuracy >= 0.80`, `hallucination_rate <= 0.10`, `faithfulness >= 0.80` via `POST /api/admin/configs/{type}/{id}/evaluate`) before admin activation (`PUT /api/admin/configs/{type}/{id}/approve`), automatically retiring the previous active configuration.
+- **Unified Active Config Bundle (`GET /api/admin/rag-config/active`)**: Exposes the currently active Model, RAG, and Verification configuration stack.
+
 ---
 
 ## 3. Technology Stack
@@ -170,6 +191,10 @@ village-grievance-system/
 │   │   ├── api/                       # REST route handlers
 │   │   │   ├── ai.py                  # AI query, history, and source endpoints
 │   │   │   ├── verification_center.py # Feature 8: AI Verification Center 7-question endpoints
+│   │   │   ├── feedback.py            # Feature 9: AI Feedback & Error Review endpoints
+│   │   │   ├── knowledge_base.py      # Feature 10: Versioned Knowledge Base endpoints
+│   │   │   ├── audit.py               # Feature 11: Audit Logs & Request Tracing endpoints
+│   │   │   ├── model_config.py        # Feature 12: Model & RAG Registry & Evaluation Gate endpoints
 │   │   │   ├── complaints.py          # Grievance CRUD and tracking
 │   │   │   ├── documents.py           # Document upload, dedup, delete, reindex
 │   │   │   └── auth.py                # JWT authentication and user management
@@ -225,7 +250,11 @@ village-grievance-system/
 │   │       ├── test_correction.py     # Correction prompt builder, controller & audit (7 tests)
 │   │       ├── test_abstention.py     # 3-tier abstention, intent, sufficiency & auth (10 tests)
 │   │       ├── test_citation.py       # Provenance, citation generator & live DB validator (18 tests)
-│   │       └── test_verification_center.py # Feature 8: Verification Center 7-question inspection & RBAC (12 tests)
+│   │       ├── test_verification_center.py # Feature 8: Verification Center 7-question inspection & RBAC (12 tests)
+│   │       ├── test_feedback.py       # Feature 9: Citizen feedback, admin review & root-cause stats (10 tests)
+│   │       ├── test_knowledge_base.py # Feature 10: Versioning, approval workflow & expiry monitoring (16 tests)
+│   │       ├── test_audit.py          # Feature 11: Audit event filters, trace correlation & RBAC (11 tests)
+│   │       └── test_model_config.py   # Feature 12: Model/RAG registry, evaluation gate & promotion (9 tests)
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── frontend/
@@ -268,7 +297,7 @@ npm run dev
 
 ## 6. Running the Test Suites
 
-### All Verification Engine Unit Tests (75 tests)
+### All Verification Engine Unit Tests (121 tests)
 ```bash
 cd backend
 python -m unittest discover -s tests/verification -p "test_*.py" -v
@@ -282,6 +311,10 @@ Runs:
 - `test_abstention.py`: 10 tests covering query intent analysis (`RESOLUTION_TIMELINE`, `DEPARTMENT_INQUIRY`, `STATUS_CHECK`), pre-generation sufficiency halts on `NULL` resolution dates, non-existent complaint IDs, expired circulars, conflicting departmental sources, citizen access authorization, and abstention audit event analytics.
 - `test_citation.py`: 18 tests covering citation schema validation, complaint record citation generation, knowledge-base chunk citation, field mapping & value extraction, inline answer annotation, live complaint DB existence verification, field value match & staleness detection, fabricated source rejection, vector store citation deferral, and API schema (`CitationOut`) serialization.
 - `test_verification_center.py`: 12 tests covering administrative overview statistics, paginated interactions listing with filters, the 7 core audit questions drilldown, claim detail with linked citations, evidence explorer with grounded claims, multi-attempt regeneration history, evaluation report retrieval, human-in-the-loop feedback submission, 404 error handling, and RBAC authorization barriers.
+- `test_feedback.py`: 10 tests covering citizen feedback submission, 404/422 validation, personal feedback history, admin list & filters, full detail drilldown, error review & root-cause resolution workflow, stats aggregation, and RBAC.
+- `test_knowledge_base.py`: 16 tests covering document version uploads with SHA-256 hashing, processing jobs, pagination, approval & automatic supersession, rejection rules, re-indexing, expiry monitoring, KB statistics, and RBAC.
+- `test_audit.py`: 11 tests covering audit event listing, multi-criteria filtering, UUID trace correlation (`events` + `ai_request_audits`), AI pipeline request audits, dashboard stats, invalid date handling, and RBAC.
+- `test_model_config.py`: 9 tests covering LLM model registry, RAG & verification configuration versioning, evaluation gating (`passed_gate`), automatic retirement of prior active configurations, active config bundle inspection, and RBAC.
 
 ### End-to-End Pipeline Regression Tests
 ```bash

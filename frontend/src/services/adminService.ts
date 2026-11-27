@@ -120,6 +120,177 @@ export interface FeedbackPayload {
   notes: string;
 }
 
+// Feature 9 — AI Feedback & Error Review Types
+export type CitizenFeedbackType = 'HELPFUL' | 'INCORRECT' | 'INCOMPLETE' | 'MISLEADING';
+export type FeedbackStatus = 'PENDING' | 'REVIEWING' | 'RESOLVED';
+export type RootCauseCategory =
+  | 'RETRIEVAL'
+  | 'OUTDATED_DOCUMENT'
+  | 'MODEL_GENERATION'
+  | 'VERIFICATION_FAILURE'
+  | 'OTHER';
+
+export interface FeedbackReviewItem {
+  id: number;
+  feedback_id: number;
+  admin_id?: number;
+  root_cause: RootCauseCategory;
+  corrective_action?: string;
+  resolution_notes?: string;
+  resolved_at?: string;
+  created_at?: string;
+}
+
+export interface CitizenFeedbackItem {
+  id: number;
+  response_id: number;
+  user_id?: number;
+  feedback_type: CitizenFeedbackType;
+  description?: string;
+  status: FeedbackStatus;
+  created_at?: string;
+  updated_at?: string;
+  reviews: FeedbackReviewItem[];
+}
+
+export interface FeedbackStats {
+  total_feedback: number;
+  pending_count: number;
+  reviewing_count: number;
+  resolved_count: number;
+  resolution_rate: number;
+  by_feedback_type: Record<string, number>;
+  by_root_cause: Record<string, number>;
+}
+
+// Feature 10 — Knowledge Base Management Types
+export interface DocumentVersionItem {
+  id: number;
+  document_id: number;
+  version_number: number;
+  file_path: string;
+  file_hash?: string;
+  file_size_bytes?: number;
+  status: string;
+  change_summary?: string;
+  rejection_reason?: string;
+  effective_from?: string;
+  effective_until?: string;
+  created_at?: string;
+  approved_at?: string;
+  processing_job?: {
+    id: number;
+    version_id: number;
+    extraction_status: string;
+    embedding_status: string;
+    indexing_status: string;
+    chunks_extracted?: number;
+    chunks_embedded?: number;
+    chunks_indexed?: number;
+    error_stage?: string;
+    error_message?: string;
+  };
+}
+
+export interface KBStats {
+  total_documents: number;
+  total_versions: number;
+  published_versions: number;
+  pending_approval: number;
+  processing: number;
+  failed_processing: number;
+  expiring_within_30_days: number;
+  expired: number;
+}
+
+// Feature 11 — Audit Logs Types
+export interface AuditEventItem {
+  id: number;
+  trace_id: string;
+  actor_id?: number;
+  actor_role?: string;
+  event_type: string;
+  action: string;
+  entity_type?: string;
+  entity_id?: string;
+  old_value?: string;
+  new_value?: string;
+  description?: string;
+  ip_address?: string;
+  created_at?: string;
+}
+
+export interface AIRequestAuditItem {
+  id: number;
+  trace_id: string;
+  query_id: number;
+  model_name?: string;
+  model_version?: string;
+  prompt_version?: string;
+  embedding_model?: string;
+  total_claims?: number;
+  supported_claims?: number;
+  contradicted_claims?: number;
+  insufficient_claims?: number;
+  final_decision?: string;
+  correction_attempts?: number;
+  abstention_reason?: string;
+  response_time_ms?: number;
+  created_at?: string;
+}
+
+// Feature 12 — Model & RAG Management Types
+export interface ModelConfigItem {
+  id: number;
+  name: string;
+  version: string;
+  provider: string;
+  model_identifier: string;
+  temperature: number;
+  max_tokens: number;
+  status: 'TESTING' | 'ACTIVE' | 'RETIRED';
+  description?: string;
+  activated_at?: string;
+  created_at?: string;
+}
+
+export interface RAGConfigItem {
+  id: number;
+  name: string;
+  version: string;
+  embedding_model: string;
+  top_k: number;
+  chunk_size: number;
+  chunk_overlap: number;
+  similarity_threshold: number;
+  reranking_enabled: number;
+  status: 'TESTING' | 'ACTIVE' | 'RETIRED';
+  description?: string;
+  activated_at?: string;
+  created_at?: string;
+}
+
+export interface VerificationConfigItem {
+  id: number;
+  name: string;
+  version: string;
+  nli_model: string;
+  supported_threshold: number;
+  contradiction_threshold: number;
+  max_retries: number;
+  abstention_enabled: number;
+  status: 'TESTING' | 'ACTIVE' | 'RETIRED';
+  description?: string;
+  activated_at?: string;
+  created_at?: string;
+}
+
+export interface ActiveConfigBundle {
+  active_model?: ModelConfigItem;
+  active_rag?: RAGConfigItem;
+  active_verification?: VerificationConfigItem;
+}
+
 export const adminService = {
   getStatistics: async (): Promise<AdminStatistics> => {
     const res = await api.get<AdminStatistics>('/admin/statistics');
@@ -165,5 +336,238 @@ export const adminService = {
   submitFeedback: async (payload: FeedbackPayload): Promise<any> => {
     const res = await api.post('/admin/verification/feedback', payload);
     return res.data;
-  }
+  },
+
+  // Feature 9 — AI Feedback & Error Review APIs
+  submitCitizenFeedback: async (payload: {
+    response_id: number;
+    feedback_type: CitizenFeedbackType;
+    description?: string;
+  }): Promise<CitizenFeedbackItem> => {
+    const res = await api.post<CitizenFeedbackItem>('/feedback', payload);
+    return res.data;
+  },
+
+  getMyFeedback: async (): Promise<CitizenFeedbackItem[]> => {
+    const res = await api.get<CitizenFeedbackItem[]>('/feedback/my');
+    return res.data;
+  },
+
+  listAdminFeedback: async (params?: {
+    page?: number;
+    page_size?: number;
+    status?: FeedbackStatus;
+    feedback_type?: CitizenFeedbackType;
+    root_cause?: RootCauseCategory;
+  }): Promise<{ items: CitizenFeedbackItem[]; total: number; page: number; page_size: number; pages: number }> => {
+    const res = await api.get('/admin/feedback', { params });
+    return res.data;
+  },
+
+  getFeedbackStats: async (): Promise<FeedbackStats> => {
+    const res = await api.get<FeedbackStats>('/admin/feedback/stats');
+    return res.data;
+  },
+
+  getFeedbackDetail: async (id: number): Promise<any> => {
+    const res = await api.get(`/admin/feedback/${id}`);
+    return res.data;
+  },
+
+  reviewFeedback: async (
+    id: number,
+    payload: {
+      status: FeedbackStatus;
+      root_cause: RootCauseCategory;
+      corrective_action?: string;
+      resolution_notes?: string;
+    }
+  ): Promise<CitizenFeedbackItem> => {
+    const res = await api.put<CitizenFeedbackItem>(`/admin/feedback/${id}/review`, payload);
+    return res.data;
+  },
+
+  // Feature 10 — Knowledge Base Management APIs
+  uploadDocumentVersion: async (docId: number, formData: FormData): Promise<DocumentVersionItem> => {
+    const res = await api.post<DocumentVersionItem>(`/admin/kb/documents/${docId}/versions`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+
+  listDocumentVersions: async (
+    docId: number,
+    params?: { page?: number; page_size?: number; status?: string }
+  ): Promise<{ items: DocumentVersionItem[]; total: number; page: number; page_size: number; pages: number }> => {
+    const res = await api.get(`/admin/kb/documents/${docId}/versions`, { params });
+    return res.data;
+  },
+
+  getDocumentVersion: async (versionId: number): Promise<DocumentVersionItem> => {
+    const res = await api.get<DocumentVersionItem>(`/admin/kb/versions/${versionId}`);
+    return res.data;
+  },
+
+  approveDocumentVersion: async (
+    versionId: number,
+    payload: { effective_from?: string; effective_until?: string } = {}
+  ): Promise<DocumentVersionItem> => {
+    const res = await api.put<DocumentVersionItem>(`/admin/kb/versions/${versionId}/approve`, payload);
+    return res.data;
+  },
+
+  rejectDocumentVersion: async (versionId: number, reason: string): Promise<DocumentVersionItem> => {
+    const res = await api.put<DocumentVersionItem>(`/admin/kb/versions/${versionId}/reject`, { reason });
+    return res.data;
+  },
+
+  reindexDocumentVersion: async (versionId: number): Promise<DocumentVersionItem> => {
+    const res = await api.post<DocumentVersionItem>(`/admin/kb/versions/${versionId}/reindex`);
+    return res.data;
+  },
+
+  getExpiringDocuments: async (days: number = 30): Promise<any[]> => {
+    const res = await api.get('/admin/kb/expiring', { params: { days } });
+    return res.data;
+  },
+
+  getKBStats: async (): Promise<KBStats> => {
+    const res = await api.get<KBStats>('/admin/kb/stats');
+    return res.data;
+  },
+
+  // Feature 11 — Audit Logs APIs
+  listAuditEvents: async (params?: {
+    page?: number;
+    page_size?: number;
+    event_type?: string;
+    action?: string;
+    entity_type?: string;
+    entity_id?: string;
+    actor_id?: number;
+    date_from?: string;
+    date_to?: string;
+  }): Promise<{ items: AuditEventItem[]; total: number; page: number; page_size: number; pages: number }> => {
+    const res = await api.get('/admin/audit/events', { params });
+    return res.data;
+  },
+
+  getAuditTrace: async (traceId: string): Promise<{ trace_id: string; events: AuditEventItem[]; ai_request_audit?: AIRequestAuditItem }> => {
+    const res = await api.get(`/admin/audit/events/trace/${traceId}`);
+    return res.data;
+  },
+
+  listAIRequestAudits: async (params?: {
+    page?: number;
+    page_size?: number;
+    final_decision?: string;
+    model_name?: string;
+  }): Promise<{ items: AIRequestAuditItem[]; total: number; page: number; page_size: number; pages: number }> => {
+    const res = await api.get('/admin/audit/ai-requests', { params });
+    return res.data;
+  },
+
+  getAIRequestAudit: async (auditId: number): Promise<AIRequestAuditItem> => {
+    const res = await api.get<AIRequestAuditItem>(`/admin/audit/ai-requests/${auditId}`);
+    return res.data;
+  },
+
+  getAuditStats: async (): Promise<any> => {
+    const res = await api.get('/admin/audit/stats');
+    return res.data;
+  },
+
+  // Feature 12 — Model & RAG Management APIs
+  listModels: async (status?: string): Promise<ModelConfigItem[]> => {
+    const res = await api.get<ModelConfigItem[]>('/admin/models', { params: { status } });
+    return res.data;
+  },
+
+  registerModel: async (payload: {
+    name: string;
+    version?: string;
+    provider: string;
+    model_identifier: string;
+    temperature?: number;
+    max_tokens?: number;
+    description?: string;
+  }): Promise<ModelConfigItem> => {
+    const res = await api.post<ModelConfigItem>('/admin/models', payload);
+    return res.data;
+  },
+
+  activateModel: async (modelId: number): Promise<ModelConfigItem> => {
+    const res = await api.put<ModelConfigItem>(`/admin/models/${modelId}/activate`);
+    return res.data;
+  },
+
+  listRAGConfigs: async (status?: string): Promise<RAGConfigItem[]> => {
+    const res = await api.get<RAGConfigItem[]>('/admin/rag-config', { params: { status } });
+    return res.data;
+  },
+
+  getActiveConfigBundle: async (): Promise<ActiveConfigBundle> => {
+    const res = await api.get<ActiveConfigBundle>('/admin/rag-config/active');
+    return res.data;
+  },
+
+  createRAGConfig: async (payload: {
+    name: string;
+    version?: string;
+    embedding_model?: string;
+    top_k?: number;
+    chunk_size?: number;
+    chunk_overlap?: number;
+    similarity_threshold?: number;
+    reranking_enabled?: boolean;
+    description?: string;
+  }): Promise<RAGConfigItem> => {
+    const res = await api.post<RAGConfigItem>('/admin/rag-config', payload);
+    return res.data;
+  },
+
+  listVerificationConfigs: async (status?: string): Promise<VerificationConfigItem[]> => {
+    const res = await api.get<VerificationConfigItem[]>('/admin/verification-config', { params: { status } });
+    return res.data;
+  },
+
+  createVerificationConfig: async (payload: {
+    name: string;
+    version?: string;
+    nli_model?: string;
+    supported_threshold?: number;
+    contradiction_threshold?: number;
+    max_retries?: number;
+    abstention_enabled?: boolean;
+    description?: string;
+  }): Promise<VerificationConfigItem> => {
+    const res = await api.post<VerificationConfigItem>('/admin/verification-config', payload);
+    return res.data;
+  },
+
+  evaluateConfig: async (
+    configType: 'MODEL' | 'RAG' | 'VERIFICATION',
+    configId: number,
+    payload: {
+      evaluation_dataset?: string;
+      factual_accuracy: number;
+      hallucination_rate: number;
+      faithfulness: number;
+      abstention_accuracy?: number;
+      avg_latency_ms?: number;
+      notes?: string;
+    }
+  ): Promise<any> => {
+    const res = await api.post(`/admin/configs/${configType}/${configId}/evaluate`, payload);
+    return res.data;
+  },
+
+  approveConfig: async (
+    configType: 'MODEL' | 'RAG' | 'VERIFICATION',
+    configId: number,
+    notes?: string
+  ): Promise<any> => {
+    const res = await api.put(`/admin/configs/${configType}/${configId}/approve`, { notes });
+    return res.data;
+  },
 };

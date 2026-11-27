@@ -14,6 +14,33 @@ from app.models.ai_records import (
     AIVerificationFeedback,
     ResearchMetric,
 )
+from app.models.knowledge_base import (
+    DocumentVersion,
+    DocumentProcessingJob,
+    VersionStatus,
+    ProcessingStage,
+)
+from app.models.audit import (
+    AuditEvent,
+    AIRequestAudit,
+    AuditEventType,
+    AuditAction,
+)
+from app.models.feedback import (
+    AIFeedback,
+    FeedbackReview,
+    FeedbackType,
+    FeedbackStatus,
+    RootCauseCategory,
+)
+from app.models.model_config import (
+    ModelConfiguration,
+    RAGConfiguration,
+    VerificationConfiguration,
+    ConfigurationEvaluation,
+    ConfigStatus,
+    ConfigType,
+)
 
 __all__ = [
     "Village",
@@ -34,4 +61,23 @@ __all__ = [
     "AIResponseCitation",
     "AIVerificationFeedback",
     "ResearchMetric",
+    "DocumentVersion",
+    "DocumentProcessingJob",
+    "VersionStatus",
+    "ProcessingStage",
+    "AuditEvent",
+    "AIRequestAudit",
+    "AuditEventType",
+    "AuditAction",
+    "AIFeedback",
+    "FeedbackReview",
+    "FeedbackType",
+    "FeedbackStatus",
+    "RootCauseCategory",
+    "ModelConfiguration",
+    "RAGConfiguration",
+    "VerificationConfiguration",
+    "ConfigurationEvaluation",
+    "ConfigStatus",
+    "ConfigType",
 ]
