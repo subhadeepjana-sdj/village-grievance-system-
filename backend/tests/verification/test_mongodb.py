@@ -50,6 +50,17 @@ class _InMemoryCollection:
             merged = {**query, **update.get("$set", {})}
             self.docs.append(merged)
 
+    def find(self, query=None, projection=None):
+        query = query or {}
+        out = []
+        for doc in self.docs:
+            if all(doc.get(k) == v for k, v in query.items()):
+                item = dict(doc)
+                if projection and projection.get("_id") == 0:
+                    item.pop("_id", None)
+                out.append(item)
+        return out
+
     def count_documents(self, query):
         return len(self.docs)
 
@@ -152,6 +163,85 @@ class TestMongoDBPersistence(unittest.TestCase):
             with self._override_user(is_admin=False):
                 resp = self.client.get("/api/admin/audit/mongodb-status")
                 self.assertEqual(resp.status_code, 403)
+
+    def test_06_user_submits_and_admin_reads_updates_via_mongodb(self):
+        from app.database.session import SessionLocal, Base, engine
+        from app.database.seed_data import seed_database
+        from app.models.complaint import Complaint, ComplaintStatusHistory
+
+        Base.metadata.create_all(bind=engine)
+        seed_database(include_demo_data=False)
+
+        with patch("app.api.complaints.mongodb_service", self.svc), \
+             patch("app.api.admin.mongodb_service", self.svc):
+            # 1. Citizen submits complaint -> persisted in MongoDB
+            with self._override_user(is_admin=False):
+                create_resp = self.client.post(
+                    "/api/complaints",
+                    data={
+                        "category": "Water Supply",
+                        "title": "Broken handpump at Ward 2",
+                        "description": "Handpump handle detached completely since morning.",
+                        "location": "Ward 2, East Tola",
+                        "priority": "HIGH",
+                    },
+                )
+                self.assertEqual(create_resp.status_code, 200)
+                cnum = create_resp.json()["complaint_number"]
+
+            # 2. Wipe SQLAlchemy rows to simulate ephemeral/clean container
+            db = SessionLocal()
+            try:
+                db.query(ComplaintStatusHistory).delete()
+                db.query(Complaint).delete()
+                db.commit()
+            finally:
+                db.close()
+
+            # 3. Admin logs in on a clean container & sees Citizen's complaint from MongoDB
+            with self._override_user(is_admin=True):
+                list_resp = self.client.get("/api/complaints")
+                self.assertEqual(list_resp.status_code, 200)
+                numbers = [c["complaint_number"] for c in list_resp.json()]
+                self.assertIn(cnum, numbers)
+
+                stats_resp = self.client.get("/api/admin/statistics")
+                self.assertEqual(stats_resp.status_code, 200)
+                self.assertGreaterEqual(stats_resp.json()["summary"]["total_complaints"], 1)
+
+                # 4. Admin resolves the MongoDB-only complaint
+                patch_resp = self.client.patch(
+                    f"/api/complaints/{cnum}",
+                    json={"status": "RESOLVED", "remarks": "Replaced valve in Ward 2"},
+                )
+                self.assertEqual(patch_resp.status_code, 200)
+                self.assertEqual(patch_resp.json()["status"], "RESOLVED")
+                self.assertEqual(len(patch_resp.json()["history"]), 2)
+
+    def test_07_admin_statistics_zero_without_dummy_fallbacks(self):
+        from app.database.session import SessionLocal, Base, engine
+        from app.models.ai_records import AIQuery, AIResponse, Evidence, VerificationResult, AIResponseCitation
+
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        try:
+            db.query(AIResponseCitation).delete()
+            db.query(VerificationResult).delete()
+            db.query(Evidence).delete()
+            db.query(AIResponse).delete()
+            db.query(AIQuery).delete()
+            db.commit()
+        finally:
+            db.close()
+
+        with patch("app.api.admin.mongodb_service", self.svc):
+            with self._override_user(is_admin=True):
+                resp = self.client.get("/api/admin/statistics")
+                self.assertEqual(resp.status_code, 200)
+                ai_stats = resp.json()["ai_statistics"]
+                self.assertEqual(ai_stats["total_ai_questions"], 0)
+                self.assertEqual(ai_stats["supported_percentage"], 0.0)
+                self.assertEqual(ai_stats["average_confidence"], 0.0)
 
 
 if __name__ == "__main__":

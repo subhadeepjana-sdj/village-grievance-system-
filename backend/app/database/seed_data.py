@@ -10,10 +10,11 @@ from app.models import (
 )
 from app.utils.security import get_password_hash
 from app.services.document_parser import document_parser_service
+from app.database.mongodb import mongodb_service
 
 logger = logging.getLogger("uvicorn.error")
 
-def seed_database():
+def seed_database(include_demo_data: bool = True):
     Base.metadata.create_all(bind=engine)
     db: Session = SessionLocal()
 
@@ -79,7 +80,21 @@ def seed_database():
                 db.commit()
                 db.refresh(existing)
             user_objs[u["email"]] = existing
+            mongodb_service.upsert_user({
+                "user_id": existing.id,
+                "name": existing.name,
+                "phone": existing.phone,
+                "email": existing.email,
+                "password_hash": existing.password_hash,
+                "role": existing.role.value,
+                "village_id": existing.village_id,
+                "department_id": existing.department_id,
+            })
         logger.info("Seeded default users (Citizen, Staff, Official, Admin, Researcher).")
+
+        if not include_demo_data:
+            logger.info("Skipping demo grievances and demo KB documents (clean slate mode).")
+            return
 
         # 4. Seed Demo Complaints
         complaints_seed = [

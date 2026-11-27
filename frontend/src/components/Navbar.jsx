@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api from '../api/client';
 import GeoCivicLogo from './GeoCivicLogo';
 import { 
   Menu, 
@@ -27,7 +28,30 @@ const Navbar = () => {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [switchingRole, setSwitchingRole] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [alertCount, setAlertCount] = useState(0);
   const profileMenuRef = useRef(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!user) {
+      setAlertCount(0);
+      return;
+    }
+    api.get('/complaints')
+      .then((res) => {
+        if (!active || !Array.isArray(res.data)) return;
+        const openCount = res.data.filter(
+          (c) => c.status !== 'RESOLVED' && c.status !== 'CLOSED'
+        ).length;
+        setAlertCount(openCount);
+      })
+      .catch(() => {
+        if (active) setAlertCount(0);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user, location.pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -124,16 +148,18 @@ const Navbar = () => {
         {/* Right: Notifications, Settings, Profile */}
         <div className="flex items-center gap-4 shrink-0">
           
-          {/* Notification Bell with Gold/Yellow badge '12' */}
+          {/* Notification Bell showing live active grievance count */}
           <Link 
-            to="/panchayat/dashboard" 
+            to={user.role === 'CITIZEN' ? '/citizen/dashboard' : '/panchayat/dashboard'} 
             className="relative p-2 rounded-full text-[#1A202C] hover:text-[#0047BA] hover:bg-white/80 transition"
-            title="12 Active Grievance Alerts"
+            title={`${alertCount} Active Grievance Alerts`}
           >
             <Bell className="w-5 h-5" />
-            <span className="absolute -top-0.5 -right-0.5 min-w-[1.2rem] h-[1.2rem] px-1 bg-[#F59E0B] text-[#1A202C] font-black text-[10px] rounded-full flex items-center justify-center shadow-xs">
-              12
-            </span>
+            {alertCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[1.2rem] h-[1.2rem] px-1 bg-[#F59E0B] text-[#1A202C] font-black text-[10px] rounded-full flex items-center justify-center shadow-xs">
+                {alertCount}
+              </span>
+            )}
           </Link>
 
           {/* Settings Icon */}
@@ -154,15 +180,8 @@ const Navbar = () => {
               aria-haspopup="menu"
               className="flex items-center gap-3 px-2.5 py-1.5 rounded-xl hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-[#0047BA]/30 transition cursor-pointer"
             >
-              <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white shadow-xs bg-slate-200 shrink-0">
-                <img 
-                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80" 
-                  alt={user.name || "System Administrator"} 
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
+              <div className="w-9 h-9 rounded-full ring-2 ring-white shadow-xs bg-[#0047BA] text-white font-bold text-xs flex items-center justify-center shrink-0">
+                {(user.name || 'US').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
               </div>
               <div className="hidden sm:block leading-tight text-left">
                 <span className="font-bold text-xs text-[#1A202C] block">

@@ -168,7 +168,7 @@ const NAVIGATION_SECTIONS = [
     items: [
       { name: "Dashboard",              label: "Dashboard",              to: "/admin/dashboard",     Icon: DashboardIcon },
       { name: "Live Monitoring",        label: "Live Monitoring",        to: "/admin/ai-monitoring", Icon: LiveMonitorIcon },
-      { name: "Notifications & Alerts", label: "Notifications & Alerts", to: "/panchayat/dashboard", Icon: AlertsIcon, badge: "12" },
+      { name: "Notifications & Alerts", label: "Notifications & Alerts", to: "/panchayat/dashboard", Icon: AlertsIcon },
     ]
   },
   {

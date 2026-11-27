@@ -78,111 +78,10 @@ const DEFAULT_DEPARTMENTS = [
   { id: 5, name: 'Agriculture & Irrigation Dept' }
 ];
 
-// 4 default high-fidelity village complaints satisfying:
-// Total: 4 complaints (2 Under Review, 1 In Progress, 1 Resolved)
-const INITIAL_BENCHMARK_COMPLAINTS = [
-  {
-    id: 1024,
-    complaint_number: 'GRV-2026-001024',
-    title: 'Pipeline fracture leaking drinking water across Ward 3 lane',
-    description: 'Drinking water pipeline burst 2 days ago near house #42. Potable water is flooding the mud lane and contaminating the local handpump perimeter. Requires immediate valve isolation and PVC segment replacement before evening supply.',
-    category: 'Water Supply',
-    location: 'Ward 3, North Sector',
-    landmark: 'Near Primary Health Sub-Center',
-    status: 'UNDER_REVIEW',
-    department_id: 1,
-    department_name: 'Village Water Dept',
-    assigned_officer: 'Officer Vikram Deshmukh',
-    officer_contact: '+91 98220 19482',
-    citizen_name: 'Ramesh Shinde',
-    citizen_phone: '+91 98231 44012',
-    created_at: '2026-10-13 09:30 AM',
-    sla_countdown: '18h left',
-    sla_status: 'urgent',
-    rag_synced: true,
-    evidence_photos: [
-      'https://images.unsplash.com/photo-1584467735871-8e85353a8413?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1579202673506-ca3ce28943ef?w=800&auto=format&fit=crop&q=80'
-    ]
-  },
-  {
-    id: 1026,
-    complaint_number: 'GRV-2026-001026',
-    title: 'Overflowing open drainage line causing health hazard near Anganwadi',
-    description: 'Monsoon silt and plastic debris clogged the concrete drain behind the nursery. Stagnant foul water is overflowing onto the walking path where children walk to school. Urgent de-silting and bleaching powder spray needed.',
-    category: 'Sanitation',
-    location: 'Ward 1, South Gali',
-    landmark: 'Opposite Anganwadi Center',
-    status: 'UNDER_REVIEW',
-    department_id: 2,
-    department_name: 'Gram Swachhta Unit',
-    assigned_officer: 'Officer Aarti Kulkarni',
-    officer_contact: '+91 98450 33219',
-    citizen_name: 'Sunita Gaikwad',
-    citizen_phone: '+91 98450 11928',
-    created_at: '2026-10-13 11:15 AM',
-    sla_countdown: '26h left',
-    sla_status: 'normal',
-    rag_synced: true,
-    evidence_photos: [
-      'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1563245372-f21724e3856d?w=800&auto=format&fit=crop&q=80'
-    ]
-  },
-  {
-    id: 1032,
-    complaint_number: 'GRV-2026-001032',
-    title: 'Transformer fuse burn causing 3-phase agricultural power failure',
-    description: '3-phase supply tripped yesterday after high voltage spike. Deep borewell pumps are non-operational during peak irrigation window for standing tomato and onion crops. Line repair crew dispatched to substation.',
-    category: 'Electricity',
-    location: 'Ward 5, Eastern Fields',
-    landmark: 'Near Feeder Post 12',
-    status: 'IN_PROGRESS',
-    department_id: 4,
-    department_name: 'MSEDCL Rural Division',
-    assigned_officer: 'JE Sandeep Mane',
-    officer_contact: '+91 97665 88201',
-    citizen_name: 'Babanrao Patil',
-    citizen_phone: '+91 97665 30194',
-    created_at: '2026-10-12 04:45 PM',
-    sla_countdown: '6h left',
-    sla_status: 'urgent',
-    rag_synced: true,
-    evidence_photos: [
-      'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=800&auto=format&fit=crop&q=80'
-    ]
-  },
-  {
-    id: 1039,
-    complaint_number: 'GRV-2026-001039',
-    title: 'Deep potholes on Main Market Road repaired and bitumen compacted',
-    description: 'Pothole patch repair completed across 350-meter market stretch using hot mix asphalt and vibro-compactor. Road reopened for vehicular traffic. Drainage gullies on both shoulders also leveled.',
-    category: 'Roads & Works',
-    location: 'Ward 2, Main Bazaar',
-    landmark: 'Bazaar Chowk to Bus Stand',
-    status: 'RESOLVED',
-    department_id: 3,
-    department_name: 'PWD Rural Sub-division',
-    assigned_officer: 'Inspector Pradeep Rao',
-    officer_contact: '+91 99221 44810',
-    citizen_name: 'Mahesh Korde',
-    citizen_phone: '+91 99221 88301',
-    created_at: '2026-10-11 02:20 PM',
-    sla_countdown: 'Completed',
-    sla_status: 'completed',
-    rag_synced: true,
-    evidence_photos: [
-      'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=800&auto=format&fit=crop&q=80'
-    ]
-  }
-];
-
 export const PanchayatDashboard = () => {
-  const [complaints, setComplaints] = useState(INITIAL_BENCHMARK_COMPLAINTS);
+  const [complaints, setComplaints] = useState([]);
   const [departments, setDepartments] = useState(DEFAULT_DEPARTMENTS);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
 
   // Quick Status Filter Tabs: All Complaints (4), Under Review (2), In Progress (1), Resolved (1)
@@ -227,27 +126,26 @@ export const PanchayatDashboard = () => {
         setDepartments(dRes.value.data);
       }
 
-      if (cRes.status === 'fulfilled' && Array.isArray(cRes.value?.data) && cRes.value.data.length > 0) {
-        const merged = cRes.value.data.map((c, index) => {
-          const fallback = INITIAL_BENCHMARK_COMPLAINTS[index % INITIAL_BENCHMARK_COMPLAINTS.length];
-          return {
-            ...fallback,
-            ...c,
-            complaint_number: c.complaint_number || fallback.complaint_number,
-            title: c.title || fallback.title,
-            description: c.description || fallback.description,
-            category: c.category || fallback.category,
-            location: c.location || fallback.location,
-            status: c.status || fallback.status,
-            department_name: c.department_name || fallback.department_name,
-            rag_synced: true,
-            evidence_photos: c.file_path ? [c.file_path] : fallback.evidence_photos
-          };
-        });
-        setComplaints(merged);
+      if (cRes.status === 'fulfilled' && Array.isArray(cRes.value?.data)) {
+        const mapped = cRes.value.data.map((c) => ({
+          ...c,
+          complaint_number: c.complaint_number || `GRV-${c.id}`,
+          title: c.title || 'Untitled Grievance',
+          description: c.description || '',
+          category: c.category || 'Other',
+          location: c.location || 'Not specified',
+          status: c.status || 'SUBMITTED',
+          department_name: c.department_name || 'Unassigned',
+          citizen_name: c.citizen_name || 'Citizen',
+          rag_synced: true,
+          evidence_photos: c.file_path ? [c.file_path] : []
+        }));
+        setComplaints(mapped);
       }
     } catch (err) {
-      console.warn('Using baseline village benchmark complaints data:', err);
+      console.error('Failed to fetch live grievances:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -346,64 +244,51 @@ export const PanchayatDashboard = () => {
     if (!manualTitle.trim()) return;
 
     setCreating(true);
-    const newSeq = Math.floor(1000 + Math.random() * 9000);
-    const newId = `GRV-2026-00${newSeq}`;
     const matchedCategory = ALL_SERVICE_CATEGORIES.find((c) => c.value === manualCategory);
-
-    const newRecord = {
-      id: newSeq,
-      complaint_number: newId,
-      title: manualTitle.trim(),
-      description: manualDescription.trim() || 'Manual desk grievance recorded at Gram Panchayat Helpdesk Counter.',
-      category: manualCategory,
-      location: manualLocation.trim() || 'Ward 4, West Village',
-      landmark: 'Gram Panchayat Counter Log',
-      status: 'UNDER_REVIEW',
-      department_id: 1,
-      department_name: matchedCategory?.dept || 'Village Water Dept',
-      assigned_officer: 'Officer Vikram Deshmukh',
-      citizen_name: manualCitizenName.trim() || 'Walk-in Citizen',
-      citizen_phone: manualCitizenPhone.trim() || '+91 98000 00000',
-      created_at: 'Just now',
-      sla_countdown: '48h left',
-      sla_status: 'normal',
-      rag_synced: true,
-      evidence_photos: manualImagePreview
-        ? [manualImagePreview]
-        : ['https://images.unsplash.com/photo-1584467735871-8e85353a8413?w=800&auto=format&fit=crop&q=80']
-    };
+    const fullDescription = [
+      manualDescription.trim() || 'Manual desk grievance recorded at Gram Panchayat Helpdesk Counter.',
+      manualCitizenName.trim() ? `Walk-in Citizen: ${manualCitizenName.trim()}` : '',
+      manualCitizenPhone.trim() ? `Phone: ${manualCitizenPhone.trim()}` : '',
+    ].filter(Boolean).join(' | ');
 
     try {
       const formData = new FormData();
-      formData.append('title', newRecord.title);
-      formData.append('category', newRecord.category);
-      formData.append('description', newRecord.description);
-      formData.append('location', newRecord.location);
+      formData.append('title', manualTitle.trim());
+      formData.append('category', manualCategory);
+      formData.append('description', fullDescription);
+      formData.append('location', manualLocation.trim() || 'Ward 4, West Village');
       if (manualImageFile) {
         formData.append('file', manualImageFile);
       }
       const res = await api.post('/complaints', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      if (res?.data?.complaint_number) {
-        newRecord.complaint_number = res.data.complaint_number;
+      const created = res?.data;
+      if (created) {
+        const record = {
+          ...created,
+          department_name: created.department_name && created.department_name !== 'Unassigned'
+            ? created.department_name
+            : (matchedCategory?.dept || 'Unassigned'),
+          citizen_name: manualCitizenName.trim() || created.citizen_name || 'Citizen',
+          citizen_phone: manualCitizenPhone.trim() || '',
+          rag_synced: true,
+          evidence_photos: created.file_path ? [created.file_path] : (manualImagePreview ? [manualImagePreview] : []),
+        };
+        setComplaints(prev => [record, ...prev]);
+        setMsg(`Manual grievance ${created.complaint_number} logged and saved to database!`);
       }
-      if (res?.data?.file_path && res.data.file_path.startsWith('/api/media/')) {
-        newRecord.evidence_photos = [res.data.file_path];
-      }
+      setLogModalOpen(false);
+      setManualTitle('');
+      setManualDescription('');
+      setManualCitizenName('');
+      setManualCitizenPhone('');
+      clearManualImage();
     } catch (apiErr) {
-      console.warn('Saved locally to desk memory:', apiErr);
+      setMsg(apiErr.response?.data?.detail || 'Failed to save manual grievance to backend database.');
+    } finally {
+      setCreating(false);
     }
-
-    setComplaints(prev => [newRecord, ...prev]);
-    setMsg(`Manual grievance ${newRecord.complaint_number} logged and synced to AI Knowledge Base!`);
-    setCreating(false);
-    setLogModalOpen(false);
-    setManualTitle('');
-    setManualDescription('');
-    setManualCitizenName('');
-    setManualCitizenPhone('');
-    clearManualImage();
   };
 
   // Compute counts for status tabs
@@ -1061,7 +946,7 @@ export const PanchayatDashboard = () => {
                     rows={4}
                     value={triageRemarks}
                     onChange={(e) => setTriageRemarks(e.target.value)}
-                    placeholder="e.g. Dispatched Ward 3 emergency plumbing crew under Officer Vikram. New 3-inch PVC segment fitted and pressure tested. Water service fully restored."
+                    placeholder="e.g. Plumbing team dispatched to inspect main supply valve and verify water pressure restoration."
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
                   />
                   <p className="text-[10px] text-slate-500">
@@ -1182,7 +1067,7 @@ export const PanchayatDashboard = () => {
                     type="text"
                     value={manualCitizenName}
                     onChange={(e) => setManualCitizenName(e.target.value)}
-                    placeholder="e.g. Prakash Rao"
+                    placeholder="Enter citizen full name"
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
                   />
                 </div>

@@ -51,9 +51,9 @@ app.include_router(media.router, prefix=settings.API_V1_STR)
 
 @app.on_event("startup")
 def startup_event():
-    logger.info("Initializing database tables & seeding initial data...")
+    logger.info("Initializing database tables & seeding base accounts/departments...")
     try:
-        seed_database()
+        seed_database(include_demo_data=os.getenv("SEED_DEMO_DATA", "0") == "1")
     except Exception as e:
         logger.error(f"Error seeding database: {e}")
 

@@ -67,93 +67,37 @@ const ResearchDashboard = () => {
     }
   };
 
-  // Base comparative performance data
-  const chartData = [
-    {
-      name: 'Config A: Standalone LLM',
-      FactualAccuracy: 42.0,
-      HallucinationRate: 58.0,
-      Faithfulness: 35.0,
-      AbstentionAccuracy: 0.0
-    },
-    {
-      name: 'Config B: LLM + RAG',
-      FactualAccuracy: 81.0,
-      HallucinationRate: 19.0,
-      Faithfulness: 88.0,
-      AbstentionAccuracy: 25.0
-    },
-    {
-      name: 'Config C: RAG + Verification',
-      FactualAccuracy: 96.5,
-      HallucinationRate: 3.5,
-      Faithfulness: 98.0,
-      AbstentionAccuracy: 100.0
-    }
-  ];
+  const mA = metrics.find(m => m.config_type === 'STANDALONE_LLM');
+  const mB = metrics.find(m => m.config_type === 'RAG_LLM');
+  const mC = metrics.find(m => m.config_type === 'RAG_VERIFICATION');
 
-  if (metrics.length > 0) {
-    const mA = metrics.find(m => m.config_type === 'STANDALONE_LLM');
-    const mB = metrics.find(m => m.config_type === 'RAG_LLM');
-    const mC = metrics.find(m => m.config_type === 'RAG_VERIFICATION');
+  const chartData = metrics.length > 0
+    ? [
+        {
+          name: 'Config A: Standalone LLM',
+          FactualAccuracy: mA?.factual_accuracy ?? 0,
+          HallucinationRate: mA?.hallucination_rate ?? 0,
+          Faithfulness: mA?.faithfulness ?? 0,
+          AbstentionAccuracy: mA?.abstention_accuracy ?? 0,
+        },
+        {
+          name: 'Config B: LLM + RAG',
+          FactualAccuracy: mB?.factual_accuracy ?? 0,
+          HallucinationRate: mB?.hallucination_rate ?? 0,
+          Faithfulness: mB?.faithfulness ?? 0,
+          AbstentionAccuracy: mB?.abstention_accuracy ?? 0,
+        },
+        {
+          name: 'Config C: RAG + Verification',
+          FactualAccuracy: mC?.factual_accuracy ?? 0,
+          HallucinationRate: mC?.hallucination_rate ?? 0,
+          Faithfulness: mC?.faithfulness ?? 0,
+          AbstentionAccuracy: mC?.abstention_accuracy ?? 0,
+        },
+      ]
+    : [];
 
-    if (mA) {
-      chartData[0].FactualAccuracy = mA.factual_accuracy;
-      chartData[0].HallucinationRate = mA.hallucination_rate;
-      chartData[0].Faithfulness = mA.faithfulness || 35.0;
-    }
-    if (mB) {
-      chartData[1].FactualAccuracy = mB.factual_accuracy;
-      chartData[1].HallucinationRate = mB.hallucination_rate;
-      chartData[1].Faithfulness = mB.faithfulness || 88.0;
-    }
-    if (mC) {
-      chartData[2].FactualAccuracy = mC.factual_accuracy;
-      chartData[2].HallucinationRate = mC.hallucination_rate;
-      chartData[2].Faithfulness = mC.faithfulness || 98.0;
-    }
-  }
-
-  const testCases = [
-    {
-      question: "Who is handling my complaint GRV-2026-001024?",
-      groundTruth: "Village Water Department (Status: Under Review)",
-      configA: {
-        answer: "Your complaint is being handled by the Road Department and is currently pending contractor assignment.",
-        verdict: "Hallucination (Wrong Department & Status)",
-        status: "FAIL"
-      },
-      configB: {
-        answer: "Your complaint is with the Village Water Department, but work is expected to complete by tomorrow evening.",
-        verdict: "Unverified Date Claim (Partial Hallucination)",
-        status: "PARTIAL"
-      },
-      configC: {
-        answer: "Your complaint GRV-2026-001024 is currently under review by the Village Water Department. An inspection team led by Officer Vikram was dispatched.",
-        verdict: "✓ 96% NLI Entailment Verified against PostgreSQL Fact Record",
-        status: "PASS"
-      }
-    },
-    {
-      question: "When will the government construct a space rocket launch station in Chandanpur?",
-      groundTruth: "No evidence found in Gram Panchayat bylaws or state records",
-      configA: {
-        answer: "The government has approved the Chandanpur Space Station under the 2027 aerospace initiative.",
-        verdict: "Fabricated False Information (High Risk)",
-        status: "FAIL"
-      },
-      configB: {
-        answer: "I couldn't locate specific launch dates in the general text.",
-        verdict: "Uncertain vague hedge (Uncalibrated)",
-        status: "PARTIAL"
-      },
-      configC: {
-        answer: "ABSTAIN: I could not find verified official evidence to answer this question regarding space launch facilities.",
-        verdict: "✓ Honest Abstention (Prevented Hallucination)",
-        status: "PASS"
-      }
-    }
-  ];
+  const testCases = Array.isArray(benchmarks) ? benchmarks : [];
 
   return (
     <div className="space-y-8 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
@@ -228,43 +172,53 @@ const ResearchDashboard = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E5E7DF] font-mono">
-              <tr className="hover:bg-[#F7F6F0]/50 transition">
-                <td className="p-3.5 font-sans font-bold text-[#991B1B]">
-                  Config A: Standalone LLM
-                </td>
-                <td className="p-3.5 text-[#991B1B] font-bold">42.0%</td>
-                <td className="p-3.5 text-[#991B1B] font-bold">58.0%</td>
-                <td className="p-3.5 text-[#69736D]">35.0%</td>
-                <td className="p-3.5 text-[#69736D]">0.0%</td>
-                <td className="p-3.5 text-[#69736D]">0.42</td>
-                <td className="p-3.5 text-[#991B1B]">0.0%</td>
-                <td className="p-3.5 text-[#17221F]">1.2s</td>
-              </tr>
-              <tr className="hover:bg-[#F7F6F0]/50 transition">
-                <td className="p-3.5 font-sans font-bold text-[#1D4ED8]">
-                  Config B: LLM + RAG (No Verifier)
-                </td>
-                <td className="p-3.5 text-[#1D4ED8] font-bold">81.0%</td>
-                <td className="p-3.5 text-[#92400E] font-bold">19.0%</td>
-                <td className="p-3.5 text-[#17221F]">88.0%</td>
-                <td className="p-3.5 text-[#065F46] font-bold">92.0%</td>
-                <td className="p-3.5 text-[#17221F]">0.81</td>
-                <td className="p-3.5 text-[#92400E]">25.0%</td>
-                <td className="p-3.5 text-[#17221F]">1.9s</td>
-              </tr>
-              <tr className="bg-[#ECFDF5]/70 hover:bg-[#ECFDF5] transition font-bold">
-                <td className="p-3.5 font-sans text-[#065F46] flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-[#065F46]" />
-                  <span>Config C: RAG + Verification (Ours)</span>
-                </td>
-                <td className="p-3.5 text-[#065F46] text-sm font-extrabold">96.5%</td>
-                <td className="p-3.5 text-[#065F46] font-extrabold">3.5%</td>
-                <td className="p-3.5 text-[#065F46]">98.0%</td>
-                <td className="p-3.5 text-[#065F46]">96.0%</td>
-                <td className="p-3.5 text-[#065F46]">0.96</td>
-                <td className="p-3.5 text-[#065F46]">100.0%</td>
-                <td className="p-3.5 text-[#17221F]">2.3s</td>
-              </tr>
+              {metrics.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center font-sans text-xs text-[#69736D]">
+                    {loading ? 'Loading evaluation telemetry...' : 'No benchmark runs recorded yet. Click "Run Comparative Experiment" to generate live metrics.'}
+                  </td>
+                </tr>
+              ) : (
+                <>
+                  <tr className="hover:bg-[#F7F6F0]/50 transition">
+                    <td className="p-3.5 font-sans font-bold text-[#991B1B]">
+                      Config A: Standalone LLM
+                    </td>
+                    <td className="p-3.5 text-[#991B1B] font-bold">{(mA?.factual_accuracy ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#991B1B] font-bold">{(mA?.hallucination_rate ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#69736D]">{(mA?.faithfulness ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#69736D]">{(mA?.retrieval_recall ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#69736D]">{(mA?.f1_score ?? 0).toFixed(2)}</td>
+                    <td className="p-3.5 text-[#991B1B]">{(mA?.abstention_accuracy ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#17221F]">{(mA?.avg_latency ?? 0).toFixed(2)}s</td>
+                  </tr>
+                  <tr className="hover:bg-[#F7F6F0]/50 transition">
+                    <td className="p-3.5 font-sans font-bold text-[#1D4ED8]">
+                      Config B: LLM + RAG (No Verifier)
+                    </td>
+                    <td className="p-3.5 text-[#1D4ED8] font-bold">{(mB?.factual_accuracy ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#92400E] font-bold">{(mB?.hallucination_rate ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#17221F]">{(mB?.faithfulness ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#065F46] font-bold">{(mB?.retrieval_recall ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#17221F]">{(mB?.f1_score ?? 0).toFixed(2)}</td>
+                    <td className="p-3.5 text-[#92400E]">{(mB?.abstention_accuracy ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#17221F]">{(mB?.avg_latency ?? 0).toFixed(2)}s</td>
+                  </tr>
+                  <tr className="bg-[#ECFDF5]/70 hover:bg-[#ECFDF5] transition font-bold">
+                    <td className="p-3.5 font-sans text-[#065F46] flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-[#065F46]" />
+                      <span>Config C: RAG + Verification (Ours)</span>
+                    </td>
+                    <td className="p-3.5 text-[#065F46] text-sm font-extrabold">{(mC?.factual_accuracy ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#065F46] font-extrabold">{(mC?.hallucination_rate ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#065F46]">{(mC?.faithfulness ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#065F46]">{(mC?.retrieval_recall ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#065F46]">{(mC?.f1_score ?? 0).toFixed(2)}</td>
+                    <td className="p-3.5 text-[#065F46]">{(mC?.abstention_accuracy ?? 0).toFixed(1)}%</td>
+                    <td className="p-3.5 text-[#17221F]">{(mC?.avg_latency ?? 0).toFixed(2)}s</td>
+                  </tr>
+                </>
+              )}
             </tbody>
           </table>
         </div>
@@ -278,121 +232,80 @@ const ResearchDashboard = () => {
             Factual Accuracy vs Hallucination Rate across Configurations
           </h3>
           <p className="text-xs text-[#69736D]">
-            Adding NLI claim verification reduces hallucinated claims by 94% compared to baseline LLMs.
+            Measured live across Standalone LLM, Hybrid RAG, and NLI Verification runs.
           </p>
         </div>
 
         <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-              <XAxis dataKey="name" stroke="#69736D" fontSize={11} tickLine={false} />
-              <YAxis stroke="#69736D" fontSize={11} unit="%" tickLine={false} />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#FFFFFF', 
-                  borderColor: '#E5E7DF', 
-                  borderRadius: '12px', 
-                  fontSize: '12px' 
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-              <Bar dataKey="FactualAccuracy" name="Factual Accuracy (%)" fill="#153D32" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="HallucinationRate" name="Hallucination Rate (%)" fill="#DC2626" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="Faithfulness" name="Faithfulness Entailment (%)" fill="#D7F36A" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {chartData.length === 0 ? (
+            <div className="h-full flex items-center justify-center rounded-xl border border-dashed border-[#E5E7DF] bg-[#F7F6F0]/50 text-xs text-[#69736D]">
+              Chart will populate when a benchmark experiment is executed.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <XAxis dataKey="name" stroke="#69736D" fontSize={11} tickLine={false} />
+                <YAxis stroke="#69736D" fontSize={11} unit="%" tickLine={false} />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#FFFFFF', 
+                    borderColor: '#E5E7DF', 
+                    borderRadius: '12px', 
+                    fontSize: '12px' 
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                <Bar dataKey="FactualAccuracy" name="Factual Accuracy (%)" fill="#153D32" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="HallucinationRate" name="Hallucination Rate (%)" fill="#DC2626" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="Faithfulness" name="Faithfulness Entailment (%)" fill="#D7F36A" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
       {/* Side-by-Side Question Ablation Samples */}
-      <div className="civic-card p-6 bg-[#FFFFFF] space-y-5">
-        <div className="space-y-1">
-          <h3 className="text-sm font-heading font-bold text-[#17221F] flex items-center gap-2">
-            <FileText className="w-4 h-4 text-[#153D32]" />
-            Side-by-Side Question Evaluation Inspector
-          </h3>
-          <p className="text-xs text-[#69736D]">
-            Examine how each architecture processed the same user inquiry.
-          </p>
-        </div>
-
-        <div className="flex gap-2 border-b border-[#E5E7DF] pb-2">
-          {testCases.map((tc, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => setSelectedCaseIdx(idx)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                selectedCaseIdx === idx
-                  ? 'bg-[#153D32] text-[#FFFFFF]'
-                  : 'text-[#69736D] hover:bg-[#F7F6F0]'
-              }`}
-            >
-              Test Case #{idx + 1}
-            </button>
-          ))}
-        </div>
-
-        <div className="space-y-4">
-          <div className="p-3.5 rounded-xl bg-[#F7F6F0] border border-[#E5E7DF] space-y-1">
-            <span className="text-[10px] uppercase font-bold text-[#69736D]">Evaluation Query</span>
-            <div className="font-heading font-bold text-sm text-[#17221F]">
-              "{testCases[selectedCaseIdx].question}"
-            </div>
-            <div className="text-[11px] text-[#065F46] font-semibold pt-0.5">
-              Authoritative Ground Truth: {testCases[selectedCaseIdx].groundTruth}
-            </div>
+      {testCases.length > 0 && (
+        <div className="civic-card p-6 bg-[#FFFFFF] space-y-5">
+          <div className="space-y-1">
+            <h3 className="text-sm font-heading font-bold text-[#17221F] flex items-center gap-2">
+              <FileText className="w-4 h-4 text-[#153D32]" />
+              Side-by-Side Question Evaluation Inspector
+            </h3>
+            <p className="text-xs text-[#69736D]">
+              Examine how each architecture processed live evaluation queries.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            
-            {/* Box A */}
-            <div className="p-4 rounded-xl bg-[#FEF2F2] border border-[#FECACA] space-y-2 text-xs">
-              <div className="flex items-center justify-between font-bold text-[#991B1B]">
-                <span>Config A: Standalone LLM</span>
-                <span className="px-1.5 py-0.2 rounded bg-[#FEE2E2] text-[10px]">FAILED</span>
-              </div>
-              <p className="text-[#7F1D1D] leading-relaxed italic">
-                "{testCases[selectedCaseIdx].configA.answer}"
-              </p>
-              <div className="text-[11px] text-[#991B1B] font-semibold pt-1">
-                Outcome: {testCases[selectedCaseIdx].configA.verdict}
-              </div>
-            </div>
-
-            {/* Box B */}
-            <div className="p-4 rounded-xl bg-[#EFF6FF] border border-[#BFDBFE] space-y-2 text-xs">
-              <div className="flex items-center justify-between font-bold text-[#1D4ED8]">
-                <span>Config B: LLM + RAG</span>
-                <span className="px-1.5 py-0.2 rounded bg-[#DBEAFE] text-[10px]">UNVERIFIED</span>
-              </div>
-              <p className="text-[#1E40AF] leading-relaxed italic">
-                "{testCases[selectedCaseIdx].configB.answer}"
-              </p>
-              <div className="text-[11px] text-[#1D4ED8] font-semibold pt-1">
-                Outcome: {testCases[selectedCaseIdx].configB.verdict}
-              </div>
-            </div>
-
-            {/* Box C */}
-            <div className="p-4 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] space-y-2 text-xs">
-              <div className="flex items-center justify-between font-bold text-[#065F46]">
-                <span>Config C: RAG + Verification</span>
-                <span className="px-1.5 py-0.2 rounded bg-[#D1FAE5] text-[10px]">VERIFIED</span>
-              </div>
-              <p className="text-[#064E3B] leading-relaxed font-medium">
-                "{testCases[selectedCaseIdx].configC.answer}"
-              </p>
-              <div className="text-[11px] text-[#065F46] font-semibold pt-1 flex items-center gap-1">
-                <Check className="w-3.5 h-3.5" />
-                <span>{testCases[selectedCaseIdx].configC.verdict}</span>
-              </div>
-            </div>
-
+          <div className="flex gap-2 border-b border-[#E5E7DF] pb-2">
+            {testCases.map((tc, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setSelectedCaseIdx(idx)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  selectedCaseIdx === idx
+                    ? 'bg-[#153D32] text-[#FFFFFF]'
+                    : 'text-[#69736D] hover:bg-[#F7F6F0]'
+                }`}
+              >
+                Test Case #{idx + 1}
+              </button>
+            ))}
           </div>
-        </div>
 
-      </div>
+          {testCases[selectedCaseIdx] && (
+            <div className="space-y-4">
+              <div className="p-3.5 rounded-xl bg-[#F7F6F0] border border-[#E5E7DF] space-y-1">
+                <span className="text-[10px] uppercase font-bold text-[#69736D]">Evaluation Query</span>
+                <div className="font-heading font-bold text-sm text-[#17221F]">
+                  "{testCases[selectedCaseIdx].question}"
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
   );

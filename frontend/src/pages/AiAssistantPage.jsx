@@ -28,12 +28,11 @@ import {
 } from 'lucide-react';
 
 const SUGGESTED_QUESTIONS = [
-  "Who is handling my complaint GRV-2026-001024?",
   "Which department handles water supply issues?",
-  "What is the status of complaint GRV-2026-001025?",
   "What are drinking water complaint resolution guidelines?",
-  "Why was an answer marked as insufficient evidence?",
-  "When will government build a space rocket launch pad in Chandanpur?"
+  "What is the schedule and rule for garbage collection?",
+  "How many hours of agricultural electricity are provided?",
+  "Why was an answer marked as insufficient evidence?"
 ];
 
 const AiAssistantPage = () => {
@@ -43,26 +42,13 @@ const AiAssistantPage = () => {
   const [messages, setMessages] = useState([
     {
       sender: 'ai',
-      answer: "Welcome to the Gram Panchayat Evidence-Grounded AI Assistant. Ask questions about your civic grievances, responsible departments, or village service bylaws. All statements are verified against official records before presentation.",
+      answer: "Welcome to the Evidence-Grounded AI Assistant. Ask questions about village services, your submitted complaints, responsible departments, or indexed records.",
       decision: 'SHOW',
       verification_status: 'SUPPORTED',
-      confidence: 98.0,
-      processing_time: 0.12,
-      evidences: [
-        {
-          source_type: 'PANCHAYAT_CHARTER',
-          chunk_id: 'KB-VILLAGE-2026-SLA',
-          similarity_score: 0.96,
-          evidence_text: 'Gram Panchayat Chandanpur Citizen Charter 2026 mandates a 24-hour turnaround for emergency drinking water inspection and 48-hour SLA for road pothole triage.'
-        }
-      ],
-      verification_results: [
-        {
-          claim: 'Gram Panchayat Citizen Charter 2026 mandates SLA response',
-          verification_result: 'SUPPORTED',
-          reason: 'Matches official charter Section 3.1.'
-        }
-      ]
+      confidence: null,
+      processing_time: null,
+      evidences: [],
+      verification_results: []
     }
   ]);
 

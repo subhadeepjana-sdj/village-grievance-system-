@@ -19,111 +19,32 @@ import {
   ArrowRight
 } from 'lucide-react';
 
-const FEATURED_ROAD_COMPLAINT = {
-  id: 812,
-  complaint_number: 'GRV-2024-00812',
-  title: 'Severe Asphalt Erosion and Deep Potholes on Main Village Link Road',
-  description: 'Deep potholes and road surface breakdown along a 200m stretch following heavy monsoon rains. Creates dangerous driving conditions for school vans and tractors near Sector 3. Requires road base leveling, stone pitching, and hot asphalt filling.',
-  category: 'Road Maintenance',
-  location: 'Sector 3, Main Panchayat Link Road (Near Primary School)',
-  department_name: 'Road Maintenance Department',
-  assigned_officer: 'Inspector Mike Johnson',
-  citizen_name: 'John Smith',
-  citizen_phone: '+91 98221 00412',
-  priority: 'HIGH',
-  status: 'IN_PROGRESS',
-  created_at: '2024-01-15T10:30:00',
-  updated_at: '2024-01-18T14:45:00',
-  sla_countdown: '14h remaining',
-  history: [] // Will render the exact 5 screenshot items by default
-};
-
-const BENCHMARK_FALLBACK_COMPLAINTS = {
-  'GRV-2024-00812': FEATURED_ROAD_COMPLAINT,
-  'GRV-2026-001024': {
-    id: 1024,
-    complaint_number: 'GRV-2026-001024',
-    title: 'Drinking water pipeline fracture leaking across Ward 3 lane',
-    description: 'Drinking water pipeline burst 2 days ago near house #42. Potable water is flooding the mud lane and contaminating the local handpump perimeter. Requires immediate valve isolation and PVC segment replacement before evening supply.',
-    category: 'Water Supply',
-    location: 'Ward 3, North Sector (Near Primary Health Sub-Center)',
-    department_name: 'Village Water Dept',
-    assigned_officer: 'Officer Vikram Deshmukh',
-    citizen_name: 'Ramesh Shinde',
-    citizen_phone: '+91 98231 44012',
-    priority: 'HIGH',
-    status: 'UNDER_REVIEW',
-    created_at: '2026-10-13T09:30:00',
-    updated_at: '2026-10-14T11:00:00',
-    sla_countdown: '18h left',
-    history: [
-      { id: 1, new_status: 'SUBMITTED', changed_by: 'Citizen Ramesh Shinde', remarks: 'Initial grievance logged on GIS civic portal with photo evidence.', timestamp: '2026-10-13T09:30:00' },
-      { id: 2, new_status: 'ACKNOWLEDGED', changed_by: 'Gram Panchayat Staff', remarks: 'Grievance acknowledged and assigned tracking index.', timestamp: '2026-10-13T10:15:00' },
-      { id: 3, new_status: 'ASSIGNED', changed_by: 'Admin Secretariat', remarks: 'Case assigned to Village Water Dept for pipeline inspection.', timestamp: '2026-10-13T14:00:00' },
-      { id: 4, new_status: 'UNDER_REVIEW', changed_by: 'Officer Vikram Deshmukh', remarks: 'On-site technical inspection scheduled for morning supply pressure testing.', timestamp: '2026-10-14T11:00:00' }
-    ]
-  },
-  'GRV-2026-001025': {
-    id: 1025,
-    complaint_number: 'GRV-2026-001025',
-    title: 'Hazardous overhead electric wire dangling near Community Well',
-    description: 'Heavy storm caused support bracket to snap on distribution pole #14. High voltage cable hanging within 6 feet of the walking trail. Power shutoff and pole re-tensioning needed.',
-    category: 'Electricity & Power',
-    location: 'Ward 1, South Sector (Community Well Path)',
-    department_name: 'MSEDCL Rural Division',
-    assigned_officer: 'Junior Engineer Santosh Rao',
-    citizen_name: 'Sunita Patil',
-    citizen_phone: '+91 98450 11293',
-    priority: 'URGENT',
-    status: 'IN_PROGRESS',
-    created_at: '2026-10-14T08:15:00',
-    updated_at: '2026-10-14T15:30:00',
-    sla_countdown: '4h left',
-    history: [
-      { id: 1, new_status: 'SUBMITTED', changed_by: 'Sunita Patil', remarks: 'Emergency complaint registered for sagging live electric cable.', timestamp: '2026-10-14T08:15:00' },
-      { id: 2, new_status: 'ACKNOWLEDGED', changed_by: 'Disaster Cell System', remarks: 'Urgent priority acknowledged; line patrol team notified.', timestamp: '2026-10-14T08:30:00' },
-      { id: 3, new_status: 'ASSIGNED', changed_by: 'Admin', remarks: 'Assigned to MSEDCL Rural Division substation emergency crew.', timestamp: '2026-10-14T09:00:00' },
-      { id: 4, new_status: 'UNDER_REVIEW', changed_by: 'JE Santosh Rao', remarks: 'Site inspection completed. Feeder temporarily de-energized for public safety.', timestamp: '2026-10-14T11:30:00' },
-      { id: 5, new_status: 'IN_PROGRESS', changed_by: 'Substation Lineman Crew', remarks: 'New pole stay-wire installed. Cable re-stringing in progress.', timestamp: '2026-10-14T15:30:00' }
-    ]
-  },
-  'GRV-2026-001026': {
-    id: 1026,
-    complaint_number: 'GRV-2026-001026',
-    title: 'Biomedical & organic solid waste dumping blocking school drainage canal',
-    description: 'Commercial vegetable stalls and local clinic dumping discarded plastic crates and clinical debris into the open concrete storm water canal. Severe stagnant water odor affecting primary school.',
-    category: 'Sanitation',
-    location: 'Ward 2, Market Chowk (Behind Zilla Parishad School)',
-    department_name: 'Gram Swachhta Unit',
-    assigned_officer: 'Sanitation Inspector Deepali Mane',
-    citizen_name: 'Prakash Rao',
-    citizen_phone: '+91 98212 99341',
-    priority: 'MEDIUM',
-    status: 'RESOLVED',
-    created_at: '2026-10-11T11:00:00',
-    updated_at: '2026-10-13T17:00:00',
-    sla_countdown: 'Completed',
-    history: [
-      { id: 1, new_status: 'SUBMITTED', changed_by: 'Prakash Rao', remarks: 'Grievance submitted with geotagged photo of canal blockage.', timestamp: '2026-10-11T11:00:00' },
-      { id: 2, new_status: 'ACKNOWLEDGED', changed_by: 'System', remarks: 'Acknowledged and logged under Solid Waste Management Bylaws.', timestamp: '2026-10-11T11:30:00' },
-      { id: 3, new_status: 'ASSIGNED', changed_by: 'Admin', remarks: 'Assigned to Gram Swachhta Unit sanitation team.', timestamp: '2026-10-11T14:00:00' },
-      { id: 4, new_status: 'UNDER_REVIEW', changed_by: 'Inspector Deepali Mane', remarks: 'Site inspection completed. Commercial vendors issued statutory notices.', timestamp: '2026-10-12T10:00:00' },
-      { id: 5, new_status: 'IN_PROGRESS', changed_by: 'Municipal Clearing Crew', remarks: 'Mechanical excavator deployed. 4.2 tons of debris cleared from canal bed.', timestamp: '2026-10-13T09:00:00' },
-      { id: 6, new_status: 'RESOLVED', changed_by: 'Inspector Deepali Mane', remarks: 'Drainage channel fully desilted and water flow verified.', timestamp: '2026-10-13T17:00:00' }
-    ]
-  }
-};
-
 const TrackComplaintPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  // Default to the featured Road Maintenance grievance from screenshot if no ID query is specified
-  const initialId = searchParams.get('id') || 'GRV-2024-00812';
+  const initialId = searchParams.get('id') || searchParams.get('q') || '';
 
   const [searchQuery, setSearchQuery] = useState(initialId);
-  const [complaint, setComplaint] = useState(FEATURED_ROAD_COMPLAINT);
+  const [complaint, setComplaint] = useState(null);
+  const [recentComplaints, setRecentComplaints] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    api.get('/complaints')
+      .then((res) => {
+        if (Array.isArray(res.data)) {
+          setRecentComplaints(res.data);
+          if (!initialId && res.data.length > 0) {
+            setComplaint(res.data[0]);
+            setSearchQuery(res.data[0].complaint_number);
+          }
+        }
+      })
+      .catch(() => {
+        setRecentComplaints([]);
+      });
+  }, []);
 
   useEffect(() => {
     if (initialId) {
@@ -132,47 +53,23 @@ const TrackComplaintPage = () => {
   }, [initialId]);
 
   const handleSearch = async (idToSearch) => {
-    const q = (idToSearch || searchQuery || '').trim();
+    const q = (idToSearch !== undefined ? idToSearch : searchQuery || '').trim();
     if (!q) return;
 
     setLoading(true);
     setError('');
-
-    // Check local high-fidelity benchmark repository first
-    if (BENCHMARK_FALLBACK_COMPLAINTS[q]) {
-      setComplaint(BENCHMARK_FALLBACK_COMPLAINTS[q]);
-      setSearchParams({ id: q });
-      setLoading(false);
-      return;
-    }
+    setComplaint(null);
 
     try {
-      const res = await api.get(`/complaints/${q}`);
+      const res = await api.get(`/complaints/${encodeURIComponent(q)}`);
       setComplaint(res.data);
-      setSearchParams({ id: q });
+      setSearchParams({ id: res.data.complaint_number || q });
     } catch (err) {
-      // Fallback matching
-      const foundFallback = Object.values(BENCHMARK_FALLBACK_COMPLAINTS).find(
-        c => c.complaint_number.toLowerCase() === q.toLowerCase() || String(c.id) === q
-      );
-
-      if (foundFallback) {
-        setComplaint(foundFallback);
-        setSearchParams({ id: foundFallback.complaint_number });
-      } else {
-        setError(err.response?.data?.detail || `Complaint record '${q}' not found in village grievance records.`);
-      }
+      setError(err.response?.data?.detail || `Complaint record '${q}' not found in village grievance records.`);
     } finally {
       setLoading(false);
     }
   };
-
-  const demoComplaintIds = [
-    { id: 'GRV-2024-00812', label: 'Road Maintenance (Live Timeline)' },
-    { id: 'GRV-2026-001024', label: 'Water Supply' },
-    { id: 'GRV-2026-001025', label: 'Power & Grid' },
-    { id: 'GRV-2026-001026', label: 'Sanitation' }
-  ];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-8 sm:py-12">
@@ -214,7 +111,7 @@ const TrackComplaintPage = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Enter complaint number, e.g. GRV-2024-00812"
+                placeholder="Enter complaint number (e.g. GRV-2026-XXXXXX)"
                 className="w-full pl-4 pr-4 py-3 rounded-xl border border-slate-200 font-mono text-xs sm:text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 transition shadow-2xs"
               />
             </div>
@@ -227,25 +124,33 @@ const TrackComplaintPage = () => {
             </button>
           </form>
 
-          {/* Quick Demo Pre-fills */}
-          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-500">
-            <span className="font-semibold text-slate-700">Quick Demo Cases:</span>
-            {demoComplaintIds.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => { setSearchQuery(item.id); handleSearch(item.id); }}
-                className={`px-2.5 py-1 rounded-lg border font-mono text-[11px] font-semibold transition cursor-pointer ${
-                  complaint?.complaint_number === item.id
-                    ? 'bg-blue-50 border-blue-300 text-blue-700 ring-1 ring-blue-300'
-                    : 'bg-slate-50 hover:bg-blue-50/50 border-slate-200 text-slate-700'
-                }`}
-              >
-                {item.id} <span className="font-sans font-normal text-slate-400">({item.label})</span>
-              </button>
-            ))}
-          </div>
+          {/* Recent Live Complaints */}
+          {recentComplaints.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-500">
+              <span className="font-semibold text-slate-700">Recent Grievances:</span>
+              {recentComplaints.slice(0, 5).map((item) => (
+                <button
+                  key={item.complaint_number}
+                  type="button"
+                  onClick={() => { setSearchQuery(item.complaint_number); handleSearch(item.complaint_number); }}
+                  className={`px-2.5 py-1 rounded-lg border font-mono text-[11px] font-semibold transition cursor-pointer ${
+                    complaint?.complaint_number === item.complaint_number
+                      ? 'bg-blue-50 border-blue-300 text-blue-700 ring-1 ring-blue-300'
+                      : 'bg-slate-50 hover:bg-blue-50/50 border-slate-200 text-slate-700'
+                  }`}
+                >
+                  {item.complaint_number} <span className="font-sans font-normal text-slate-400">({item.category})</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
+        {!complaint && !error && !loading && (
+          <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center text-xs text-slate-600">
+            Enter a complaint tracking number above or submit a new grievance in the User portal to inspect its live verification timeline.
+          </div>
+        )}
 
         {error && (
           <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2">
@@ -296,7 +201,7 @@ const TrackComplaintPage = () => {
                     <Building2 className="w-3.5 h-3.5 text-blue-600" /> Assigned Department
                   </div>
                   <div className="font-bold text-slate-900 text-xs">
-                    {complaint.department_name || 'Road Maintenance Department'}
+                    {complaint.department_name || 'Unassigned'}
                   </div>
                 </div>
 
@@ -305,16 +210,16 @@ const TrackComplaintPage = () => {
                     <MapPin className="w-3.5 h-3.5 text-blue-600" /> Location / Ward
                   </div>
                   <div className="font-bold text-slate-900 text-xs truncate">
-                    {complaint.location || 'Sector 3, Main Link Road'}
+                    {complaint.location || 'Not specified'}
                   </div>
                 </div>
 
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
                   <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-semibold">
-                    <User className="w-3.5 h-3.5 text-blue-600" /> Complainant & Officer
+                    <User className="w-3.5 h-3.5 text-blue-600" /> Complainant
                   </div>
                   <div className="font-bold text-slate-900 text-xs">
-                    {complaint.citizen_name || 'John Smith'}
+                    {complaint.citizen_name || 'Citizen'}
                   </div>
                 </div>
 

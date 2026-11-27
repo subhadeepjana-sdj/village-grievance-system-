@@ -109,21 +109,21 @@ const LandingPage = () => {
                       background: "#F7F6F0", border: "1px solid #E5E7DF", color: "#153D32",
                       padding: "2px 8px", borderRadius: "6px",
                     }}>
-                      GRV-2026-001024
+                      GRV-YYYY-XXXXXX
                     </span>
-                    <span style={{ fontSize: "11px", color: "#69736D" }}>Ward 04, Chandanpur</span>
+                    <span style={{ fontSize: "11px", color: "#69736D" }}>Workflow Illustration</span>
                   </div>
                   <StatusBadge status="UNDER_REVIEW" />
                 </div>
                 <h3 style={{ margin: "0 0 6px", fontSize: "13px", fontWeight: 700, color: "#17221F" }}>
-                  Water supply disruption in Ward 04
+                  Citizen Grievance Workflow
                 </h3>
                 <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#404B46", lineHeight: 1.5 }}>
-                  Main overhead supply pipe leaking brownish sediment near Kali Mandir junction. Affecting 42 households.
+                  Submissions created in the User portal are persisted to MongoDB and appear immediately in the Administrator queue with full audit history.
                 </p>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#69736D" }}>
-                  <span>Dept: <strong>Village Water Department</strong></span>
-                  <span>SLA: <strong>24 Hours</strong></span>
+                  <span>Routing: <strong>Department Assignment</strong></span>
+                  <span>Storage: <strong>MongoDB + SQL Sync</strong></span>
                 </div>
               </div>
 
@@ -166,18 +166,18 @@ const LandingPage = () => {
                   </div>
                 </div>
                 <div style={{ fontSize: "11px", color: "#69736D", marginBottom: "8px" }}>
-                  Q: <em>"Who is handling my complaint GRV-2026-001024?"</em>
+                  Q: <em>"Who is handling my submitted complaint?"</em>
                 </div>
                 <p style={{
                   fontSize: "12px", color: "#17221F", lineHeight: 1.6, margin: "0 0 10px",
                   background: "#F7F6F0", padding: "10px 12px", borderRadius: "8px", border: "1px solid #E5E7DF",
                 }}>
-                  "Your complaint <strong>GRV-2026-001024</strong> is currently <strong>Under Review</strong> by the <strong>Village Water Department</strong>. An inspection team led by Officer Vikram was dispatched to Ward 4."
+                  Every answer is grounded exclusively in live grievance records and uploaded Panchayat knowledge documents, or safely abstains if no record exists.
                 </p>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#69736D" }}>
-                  <span style={{ fontFamily: "monospace" }}>Faithfulness: <strong style={{ color: "#065F46" }}>96%</strong></span>
+                  <span style={{ fontFamily: "monospace" }}>Mode: <strong style={{ color: "#065F46" }}>Evidence-Gated</strong></span>
                   <span style={{ color: "#153D32", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
-                    <FileCheck2 size={13} /> Source Verified
+                    <FileCheck2 size={13} /> Zero Unverified Claims
                   </span>
                 </div>
               </div>
@@ -240,7 +240,7 @@ const LandingPage = () => {
           {/* 4-column step cards */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "24px" }}>
             {[
-              { num: "01", bg: "#153D32", numColor: "#D7F36A", title: "Submit a Grievance", desc: "Citizens lodge complaints online with category, location, and photos. A unique tracking ID (GRV-2026-001024) is issued instantly.", tag: "Photo & document attachments" },
+              { num: "01", bg: "#153D32", numColor: "#D7F36A", title: "Submit a Grievance", desc: "Citizens lodge complaints online with category, location, and photos. A unique tracking ID (GRV-YYYY-XXXXXX) is issued instantly.", tag: "Photo & document attachments" },
               { num: "02", bg: "#EFF5EF", numColor: "#153D32", title: "Retrieve Verified Data", desc: "Hybrid search queries live PostgreSQL database records alongside Qdrant vector knowledge chunks.", tag: "Postgres + Qdrant hybrid retrieval" },
               { num: "03", bg: "#EFF5EF", numColor: "#153D32", title: "Verify Claims via NLI", desc: "Candidate text is split into atomic claims. Natural Language Inference checks each claim against retrieved evidence.", tag: "Contradiction detection engine" },
               { num: "04", bg: "#D7F36A", numColor: "#17221F", title: "Grounded Output or Abstain", desc: "If supported, answer shown with source badges. If contradicted, corrected. If evidence insufficient, system safely abstains.", tag: "Honest & transparent outputs" },

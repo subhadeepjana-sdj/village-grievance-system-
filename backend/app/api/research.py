@@ -26,8 +26,4 @@ def get_latest_metrics(
     db: Session = Depends(get_db)
 ):
     metrics = db.query(ResearchMetric).order_by(ResearchMetric.timestamp.desc()).limit(15).all()
-    if not metrics:
-        # Generate initial baseline metrics if DB is fresh
-        res = research_evaluator.run_comparative_experiment(db)
-        metrics = res["results"]
     return metrics

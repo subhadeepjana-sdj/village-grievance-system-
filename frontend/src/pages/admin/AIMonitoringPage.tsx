@@ -36,7 +36,9 @@ export type MonitoringSubsection =
 
 interface AuditItem {
   id: string;
-  category: 'Water Supply' | 'Sanitation' | 'Roads & Works' | 'Electricity' | 'Govt Schemes';
+  interactionId?: number;
+  configKey?: BenchmarkConfigType;
+  category: string;
   question: string;
   evidence: string;
   rawCandidate: string;
@@ -47,186 +49,7 @@ interface AuditItem {
   correctedResponse?: string;
 }
 
-const AUDIT_LOG_DATA: AuditItem[] = [
-  {
-    id: 'QRY-1024',
-    category: 'Water Supply',
-    question: 'Who is handling complaint #V1024 regarding pipeline leakage in Ward 3?',
-    evidence: 'Record #V1024: Dept = Village Water Works Dept. Officer in Charge: Ramesh Patil. Status: Under Inspection.',
-    rawCandidate: 'Complaint #V1024 is being handled by Electricity Board engineer Suresh Patil.',
-    contradictedClaimSnippet: 'Electricity Board engineer Suresh Patil',
-    nliScore: 0.12,
-    verdict: 'Contradicted',
-    finalAction: 'Auto-Corrected',
-    correctedResponse: 'Assigned to Village Water Works Dept (Officer: Ramesh Patil). Status: Under Inspection.'
-  },
-  {
-    id: 'QRY-1028',
-    category: 'Electricity',
-    question: 'What is the status of solar street light repair near Panchayat Bhavan?',
-    evidence: 'Grievance #EL-402: Solar LED driver replacement scheduled for Thursday. Contractor: Surya Gram Energy.',
-    rawCandidate: 'The solar street light repair is scheduled for Thursday by contractor Surya Gram Energy.',
-    nliScore: 0.97,
-    verdict: 'Supported',
-    finalAction: 'Delivered As-Is'
-  },
-  {
-    id: 'QRY-1031',
-    category: 'Govt Schemes',
-    question: 'Can I get subsidy under PM Awas Yojana if my family owns 5 acres of agricultural land?',
-    evidence: 'No matching eligibility clauses found in local Panchayat corpus for land ownership >2.5 acres.',
-    rawCandidate: 'Yes, you can easily receive the full subsidy regardless of land size or agricultural holdings.',
-    contradictedClaimSnippet: 'Yes, you can easily receive the full subsidy',
-    nliScore: 'No Context',
-    verdict: 'Abstained',
-    finalAction: 'Withheld / Abstained',
-    correctedResponse: 'Safe Abstention: Insufficient policy evidence in knowledge base. Transferred to Gram Sevak for manual review.'
-  },
-  {
-    id: 'QRY-1035',
-    category: 'Sanitation',
-    question: 'When was the village drainage cleaning tender awarded?',
-    evidence: 'Drainage tender NIT-09/2026 awarded on Oct 3, 2026 to M/S Sahyadri Infra for Rs 4.2 Lakhs.',
-    rawCandidate: 'The drainage cleaning tender was awarded on Oct 3, 2026 to M/S Sahyadri Infra for Rs 4.2 Lakhs.',
-    nliScore: 0.98,
-    verdict: 'Supported',
-    finalAction: 'Delivered As-Is'
-  },
-  {
-    id: 'QRY-1039',
-    category: 'Govt Schemes',
-    question: 'What are the working hours of the Primary Health Center dispensary on Sundays?',
-    evidence: 'PHC Health Manual: Dispensary remains open Mon-Sat 8:00 AM - 2:00 PM. Sundays emergency on-call duty only.',
-    rawCandidate: 'The PHC dispensary is fully open all day Sunday from 9:00 AM to 5:00 PM for routine OPD services.',
-    contradictedClaimSnippet: 'fully open all day Sunday from 9:00 AM to 5:00 PM',
-    nliScore: 0.08,
-    verdict: 'Contradicted',
-    finalAction: 'Auto-Corrected',
-    correctedResponse: 'Sundays are reserved for emergency on-call duty only; regular dispensary hours are Mon-Sat 8:00 AM to 2:00 PM.'
-  },
-  {
-    id: 'QRY-1044',
-    category: 'Water Supply',
-    question: 'How many borewells were approved under the 2026 Jal Jeevan Gram Project?',
-    evidence: 'JJM Gram Sanction 2026: 4 new deep borewells with solar submersible pumps approved for Sector 2 & 4.',
-    rawCandidate: '4 new deep borewells with solar submersible pumps were approved for Sector 2 & 4.',
-    nliScore: 0.96,
-    verdict: 'Supported',
-    finalAction: 'Delivered As-Is'
-  },
-  {
-    id: 'QRY-1049',
-    category: 'Roads & Works',
-    question: 'Is there a penalty clause for delays in road macadamization on Main Village Road?',
-    evidence: 'Corpus lookup: Missing contract clauses for Section B-4 road penalty specifications.',
-    rawCandidate: 'The road contractor will be fined Rs 50,000 per calendar day starting immediately for any delay.',
-    contradictedClaimSnippet: 'fined Rs 50,000 per calendar day',
-    nliScore: 'No Context',
-    verdict: 'Abstained',
-    finalAction: 'Withheld / Abstained',
-    correctedResponse: 'Safe Abstention: Specific penalty schedule unverified in indexed contracts. Routed to BDO office for official clarification.'
-  },
-  {
-    id: 'QRY-1052',
-    category: 'Govt Schemes',
-    question: 'Where can I submit the physical verification form for Old Age Pension Scheme?',
-    evidence: 'Panchayat Circular 14/2026: Pension verification forms must be deposited at Gram Panchayat Helpdesk Counter 2 between 10 AM - 1 PM.',
-    rawCandidate: 'Deposit your pension verification forms at Gram Panchayat Helpdesk Counter 2 between 10:00 AM and 1:00 PM.',
-    nliScore: 0.95,
-    verdict: 'Supported',
-    finalAction: 'Delivered As-Is'
-  },
-  {
-    id: 'QRY-1055',
-    category: 'Roads & Works',
-    question: 'Who is the nodal supervising engineer for Pradhan Mantri Gram Sadak Yojana in our block?',
-    evidence: 'Block PWD Directory: Block Nodal Engineer is Er. Sandeep Kulkarni (PWD Sub-division Office).',
-    rawCandidate: 'The supervising nodal engineer is District Collector Smt. Meena.',
-    contradictedClaimSnippet: 'District Collector Smt. Meena',
-    nliScore: 0.11,
-    verdict: 'Contradicted',
-    finalAction: 'Auto-Corrected',
-    correctedResponse: 'The supervising nodal engineer is Er. Sandeep Kulkarni (PWD Sub-division Office).'
-  },
-  {
-    id: 'QRY-1058',
-    category: 'Sanitation',
-    question: 'What is the budget allocation for Gram Swachhta Abhiyan in Q3?',
-    evidence: 'Document #GS-2026-Q3: Financial sanction is pending final approval in upcoming Gram Sabha meeting.',
-    rawCandidate: 'The Q3 Gram Swachhta budget has been confirmed and fixed at Rs 15 Lakhs.',
-    contradictedClaimSnippet: 'confirmed and fixed at Rs 15 Lakhs',
-    nliScore: 'No Context',
-    verdict: 'Abstained',
-    finalAction: 'Withheld / Abstained',
-    correctedResponse: 'Safe Abstention: Financial sanction is currently pending in Gram Sabha resolution.'
-  },
-  {
-    id: 'QRY-1061',
-    category: 'Water Supply',
-    question: 'What is the chlorination schedule for the central overhead tank?',
-    evidence: 'Water Quality Log #W-12: Central tank chlorination is carried out bi-weekly every Tuesday and Friday morning at 7:00 AM.',
-    rawCandidate: 'Central overhead water tank chlorination is conducted bi-weekly on Tuesday and Friday at 7:00 AM.',
-    nliScore: 0.99,
-    verdict: 'Supported',
-    finalAction: 'Delivered As-Is'
-  },
-  {
-    id: 'QRY-1065',
-    category: 'Electricity',
-    question: 'Can I apply for a 3-phase agricultural water pump meter online?',
-    evidence: 'Electricity Board Circular 88: 3-phase agricultural pump connections require physical submission at Sub-station office with 7/12 land extract.',
-    rawCandidate: '3-phase agricultural pump applications must be submitted physically at the Sub-station office with a 7/12 land extract.',
-    nliScore: 0.94,
-    verdict: 'Supported',
-    finalAction: 'Delivered As-Is'
-  },
-  {
-    id: 'QRY-1068',
-    category: 'Water Supply',
-    question: 'Is testing data available for fluoride content in Sector 4 ground water?',
-    evidence: 'Corpus search: Lab test report for Sector 4 fluoride content not yet uploaded to village portal.',
-    rawCandidate: 'Fluoride level is 0.4 ppm, which is completely safe for consumption.',
-    contradictedClaimSnippet: 'Fluoride level is 0.4 ppm',
-    nliScore: 'No Context',
-    verdict: 'Abstained',
-    finalAction: 'Withheld / Abstained',
-    correctedResponse: 'Safe Abstention: Laboratory test records for Sector 4 fluoride levels are currently unavailable in repository.'
-  },
-  {
-    id: 'QRY-1072',
-    category: 'Sanitation',
-    question: 'How often is the septic waste disposal tanker dispatched to Ward 2?',
-    evidence: 'Sanitation Protocol 2026: Community septic tankers operate on the 2nd and 4th Saturday of each calendar month.',
-    rawCandidate: 'The septic waste disposal tanker operates on the 2nd and 4th Saturday of each month.',
-    nliScore: 0.96,
-    verdict: 'Supported',
-    finalAction: 'Delivered As-Is'
-  },
-  {
-    id: 'QRY-1076',
-    category: 'Roads & Works',
-    question: 'Has the culvert construction near School Road been sanctioned?',
-    evidence: 'Panchayat Resolution #45: Construction of 2m RCC culvert on School Road approved with budget of Rs 2.8 Lakhs.',
-    rawCandidate: 'Yes, a 2m RCC culvert on School Road was approved under Panchayat Resolution #45 with a budget of Rs 2.8 Lakhs.',
-    nliScore: 0.97,
-    verdict: 'Supported',
-    finalAction: 'Delivered As-Is'
-  },
-  {
-    id: 'QRY-1080',
-    category: 'Electricity',
-    question: 'When will power supply be cut for the scheduled transformer upgrade this week?',
-    evidence: 'Corpus search: No scheduled power outage notice published for transformer upgrades this week.',
-    rawCandidate: 'Power will be turned off tomorrow from 10:00 AM to 4:00 PM across the entire village.',
-    contradictedClaimSnippet: 'turned off tomorrow from 10:00 AM to 4:00 PM',
-    nliScore: 'No Context',
-    verdict: 'Abstained',
-    finalAction: 'Withheld / Abstained',
-    correctedResponse: 'Safe Abstention: No official outage bulletin found for transformer upgrades.'
-  }
-];
-
-const CATEGORIES: Array<'All' | AuditItem['category']> = [
+const CATEGORIES: Array<string> = [
   'All',
   'Water Supply',
   'Sanitation',
@@ -326,113 +149,161 @@ export const AIMonitoringPage: React.FC = () => {
     }
   };
 
-  const configMetrics = useMemo(() => {
-    if (benchmarkConfig === 'standalone') {
-      return {
-        name: 'Standalone LLM (Baseline)',
-        badge: 'Baseline Configuration',
-        totalQueries: 26,
-        supportedPct: 58.0,
-        supportedCount: 15,
-        contradictedPct: 42.0,
-        contradictedCount: 11,
-        abstainPct: 0.0,
-        abstainCount: 0,
-        recallRate: '0.0%',
-        recallSubtext: 'No vector retrieval attached | Cosine sim: N/A',
-        latency: '0.65s',
-        latencySubtext: 'Retrieval: 0ms | LLM: 650ms | NLI Check: 0ms',
-        safetyBanner: {
-          title: 'Ungrounded Baseline Alert:',
-          description: '42.0% hallucination rate with 0% safe abstentions. High risk of fabricated public grievance status delivered directly to citizens without guardrails.',
-          theme: 'red' as const
-        },
-        pieData: [
-          { name: 'Supported (Faithful)', verdictKey: 'Supported' as const, value: 58.0, count: 15, color: '#15803D' },
-          { name: 'Contradicted (Hallucinated)', verdictKey: 'Contradicted' as const, value: 42.0, count: 11, color: '#DC2626' },
-          { name: 'Insufficient (Abstained)', verdictKey: 'Abstained' as const, value: 0.0, count: 0, color: '#64748B' }
-        ],
-        barData: [
-          { category: 'Water Supply', total: 7, faithful: 4, contradicted: 3, abstained: 0 },
-          { category: 'Sanitation', total: 5, faithful: 3, contradicted: 2, abstained: 0 },
-          { category: 'Roads & Works', total: 6, faithful: 3, contradicted: 3, abstained: 0 },
-          { category: 'Electricity', total: 4, faithful: 3, contradicted: 1, abstained: 0 },
-          { category: 'Govt Schemes', total: 4, faithful: 2, contradicted: 2, abstained: 0 }
-        ]
-      };
+  const liveAuditLogs = useMemo<AuditItem[]>(() => {
+    const items: AuditItem[] = [];
+    if (interactions && interactions.length > 0) {
+      for (const inter of interactions) {
+        const dec = String(inter.decision || '').toUpperCase();
+        const verdict: AuditItem['verdict'] =
+          dec === 'CORRECT' || dec === 'CONTRADICTED'
+            ? 'Contradicted'
+            : dec === 'ABSTAIN' || dec === 'INSUFFICIENT_EVIDENCE'
+              ? 'Abstained'
+              : 'Supported';
+        const finalAction: AuditItem['finalAction'] =
+          verdict === 'Contradicted'
+            ? 'Auto-Corrected'
+            : verdict === 'Abstained'
+              ? 'Withheld / Abstained'
+              : 'Delivered As-Is';
+        const cfgRaw = String(inter.configuration || '').toLowerCase();
+        const configKey: BenchmarkConfigType = cfgRaw.includes('standalone')
+          ? 'standalone'
+          : cfgRaw === 'rag_llm' || cfgRaw === 'rag'
+            ? 'rag'
+            : 'nli';
+        items.push({
+          id: `QRY-${inter.id}`,
+          interactionId: inter.id,
+          configKey,
+          category: 'AI Verification',
+          question: inter.question,
+          evidence: `Claims: ${inter.supported_count || 0} supported, ${inter.contradicted_count || 0} contradicted, ${inter.insufficient_count || 0} insufficient (${inter.claim_count || 0} total)`,
+          rawCandidate: inter.final_answer,
+          nliScore: inter.confidence != null ? Number((inter.confidence / 100).toFixed(2)) : 'N/A',
+          verdict,
+          finalAction,
+        });
+      }
+    } else if (aiRequestAudits && aiRequestAudits.length > 0) {
+      for (const a of aiRequestAudits) {
+        const dec = String(a.final_decision || '').toUpperCase();
+        const verdict: AuditItem['verdict'] =
+          dec === 'CORRECT' || dec === 'CONTRADICTED'
+            ? 'Contradicted'
+            : dec === 'ABSTAIN' || dec === 'INSUFFICIENT_EVIDENCE'
+              ? 'Abstained'
+              : 'Supported';
+        items.push({
+          id: a.trace_id || `AUD-${a.id}`,
+          configKey: 'nli',
+          category: a.model_name || 'AI Pipeline',
+          question: `Trace #${a.query_id} (${a.trace_id || a.id})`,
+          evidence: `Claims: ${a.supported_claims || 0} supported, ${a.contradicted_claims || 0} contradicted, ${a.insufficient_claims || 0} insufficient`,
+          rawCandidate: `Decision: ${a.final_decision || 'UNKNOWN'}${a.abstention_reason ? ` — ${a.abstention_reason}` : ''}`,
+          nliScore: a.total_claims ? `${a.supported_claims || 0}/${a.total_claims}` : 'N/A',
+          verdict,
+          finalAction:
+            verdict === 'Contradicted'
+              ? 'Auto-Corrected'
+              : verdict === 'Abstained'
+                ? 'Withheld / Abstained'
+                : 'Delivered As-Is',
+        });
+      }
     }
+    return items;
+  }, [interactions, aiRequestAudits]);
 
-    if (benchmarkConfig === 'rag') {
-      return {
-        name: 'LLM + RAG',
-        badge: 'Dense Retrieval Only',
-        totalQueries: 26,
-        supportedPct: 88.5,
-        supportedCount: 23,
-        contradictedPct: 11.5,
-        contradictedCount: 3,
-        abstainPct: 0.0,
-        abstainCount: 0,
-        recallRate: '92.4%',
-        recallSubtext: 'Avg cosine similarity: 0.89 across top-3 chunks',
-        latency: '1.07s',
-        latencySubtext: 'Retrieval: 180ms | LLM: 890ms | NLI Check: 0ms',
-        safetyBanner: {
-          title: 'RAG Baseline Notice:',
-          description: 'Dense retrieval reduces hallucinations from 42% down to 11.5%, but without NLI cross-checking, 3 ungrounded claims reach citizens.',
-          theme: 'amber' as const
-        },
-        pieData: [
-          { name: 'Supported (Faithful)', verdictKey: 'Supported' as const, value: 88.5, count: 23, color: '#15803D' },
-          { name: 'Contradicted (Passed Through)', verdictKey: 'Contradicted' as const, value: 11.5, count: 3, color: '#DC2626' },
-          { name: 'Insufficient (Abstained)', verdictKey: 'Abstained' as const, value: 0.0, count: 0, color: '#64748B' }
-        ],
-        barData: [
-          { category: 'Water Supply', total: 7, faithful: 6, contradicted: 1, abstained: 0 },
-          { category: 'Sanitation', total: 5, faithful: 5, contradicted: 0, abstained: 0 },
-          { category: 'Roads & Works', total: 6, faithful: 5, contradicted: 1, abstained: 0 },
-          { category: 'Electricity', total: 4, faithful: 4, contradicted: 0, abstained: 0 },
-          { category: 'Govt Schemes', total: 4, faithful: 3, contradicted: 1, abstained: 0 }
-        ]
-      };
+  const configMetrics = useMemo(() => {
+    const modeName =
+      benchmarkConfig === 'standalone'
+        ? 'Standalone LLM (Baseline)'
+        : benchmarkConfig === 'rag'
+          ? 'LLM + RAG'
+          : 'LLM + RAG + NLI Verification (Active)';
+    const badge =
+      benchmarkConfig === 'standalone'
+        ? 'Baseline Configuration'
+        : benchmarkConfig === 'rag'
+          ? 'Dense Retrieval Only'
+          : 'Full Research Architecture';
+
+    const scopedLogs = benchmarkConfig === 'nli'
+      ? liveAuditLogs
+      : liveAuditLogs.filter((l) => l.configKey === benchmarkConfig);
+
+    const apiStats = stats?.ai_statistics;
+    const totalFromApi = benchmarkConfig === 'nli'
+      ? (verifOverview?.total_interactions ?? apiStats?.total_ai_questions ?? scopedLogs.length)
+      : scopedLogs.length;
+
+    const supportedCount = benchmarkConfig === 'nli' && verifOverview?.decision_distribution
+      ? verifOverview.decision_distribution.SHOW
+      : scopedLogs.filter((l) => l.verdict === 'Supported').length;
+    const contradictedCount = benchmarkConfig === 'nli' && verifOverview?.decision_distribution
+      ? verifOverview.decision_distribution.CORRECT
+      : scopedLogs.filter((l) => l.verdict === 'Contradicted').length;
+    const abstainCount = benchmarkConfig === 'nli' && verifOverview?.decision_distribution
+      ? verifOverview.decision_distribution.ABSTAIN
+      : scopedLogs.filter((l) => l.verdict === 'Abstained').length;
+
+    const totalQueries = Math.max(totalFromApi, supportedCount + contradictedCount + abstainCount);
+    const pct = (n: number) => (totalQueries > 0 ? Math.round((n / totalQueries) * 1000) / 10 : 0);
+
+    const supportedPct = totalQueries > 0 ? pct(supportedCount) : 0;
+    const contradictedPct = totalQueries > 0 ? pct(contradictedCount) : 0;
+    const abstainPct = totalQueries > 0 ? pct(abstainCount) : 0;
+
+    const avgLatency = benchmarkConfig === 'nli' ? (apiStats?.average_response_time ?? 0) : 0;
+    const indexedDocs = kbStats?.total_documents ?? stats?.summary?.total_documents ?? 0;
+
+    const domainCounts: Record<string, { category: string; faithful: number; contradicted: number; abstained: number }> = {};
+    for (const item of scopedLogs) {
+      const cat = item.category || 'General';
+      if (!domainCounts[cat]) domainCounts[cat] = { category: cat, faithful: 0, contradicted: 0, abstained: 0 };
+      if (item.verdict === 'Supported') domainCounts[cat].faithful += 1;
+      else if (item.verdict === 'Contradicted') domainCounts[cat].contradicted += 1;
+      else domainCounts[cat].abstained += 1;
     }
 
     return {
-      name: 'LLM + RAG + NLI Verification (Active)',
-      badge: 'Full Research Architecture',
-      totalQueries: 26,
-      supportedPct: 69.2,
-      supportedCount: 18,
-      contradictedPct: 11.5,
-      contradictedCount: 3,
-      abstainPct: 19.3,
-      abstainCount: 5,
-      recallRate: '92.4%',
-      recallSubtext: 'Avg cosine similarity: 0.89 across top-3 chunks',
-      latency: '1.42s',
-      latencySubtext: 'Retrieval: 180ms | LLM: 890ms | NLI Check: 350ms',
+      name: modeName,
+      badge,
+      totalQueries,
+      supportedPct,
+      supportedCount,
+      contradictedPct,
+      contradictedCount,
+      abstainPct,
+      abstainCount,
+      recallRate: indexedDocs > 0 ? `${Math.min(100, Math.round((verifOverview?.avg_confidence ?? apiStats?.average_confidence ?? 0) * 10) / 10)}%` : '0.0%',
+      recallSubtext: indexedDocs > 0 ? `${indexedDocs} indexed KB document(s)` : 'No KB documents indexed yet',
+      latency: `${Number(avgLatency || 0).toFixed(2)}s`,
+      latencySubtext: totalQueries > 0 ? `Measured across ${totalQueries} live inference trace(s)` : 'No inference traces recorded yet',
       safetyBanner: {
-        title: 'Automated Safety Guarantee:',
-        description: 'Zero ungrounded hallucinations presented to citizens (100% intercepted: 11.5% auto-corrected, 19.3% safely abstained).',
-        theme: 'emerald' as const
+        title: totalQueries > 0 ? 'Live Verification Guardrail:' : 'Clean Telemetry State:',
+        description:
+          totalQueries > 0
+            ? `${supportedPct}% supported, ${contradictedPct}% intercepted/corrected, ${abstainPct}% safely abstained across ${totalQueries} real AI queries.`
+            : 'No AI queries logged yet. Queries from Citizens or Admin will appear here in real time.',
+        theme: (contradictedCount > 0 && benchmarkConfig !== 'nli' ? 'red' : totalQueries > 0 ? 'emerald' : 'amber') as 'emerald' | 'amber' | 'red',
       },
-      pieData: [
-        { name: 'Supported (Faithful)', verdictKey: 'Supported' as const, value: 69.2, count: 18, color: '#15803D' },
-        { name: 'Contradiction Corrected', verdictKey: 'Contradicted' as const, value: 11.5, count: 3, color: '#DC2626' },
-        { name: 'Safe Abstentions', verdictKey: 'Abstained' as const, value: 19.3, count: 5, color: '#64748B' }
-      ],
-      barData: [
-        { category: 'Water Supply', total: 7, faithful: 5, contradicted: 1, abstained: 1 },
-        { category: 'Sanitation', total: 5, faithful: 4, contradicted: 0, abstained: 1 },
-        { category: 'Roads & Works', total: 6, faithful: 4, contradicted: 1, abstained: 1 },
-        { category: 'Electricity', total: 4, faithful: 3, contradicted: 0, abstained: 1 },
-        { category: 'Govt Schemes', total: 4, faithful: 2, contradicted: 1, abstained: 1 }
-      ]
+      pieData: totalQueries > 0
+        ? [
+            { name: 'Supported (Faithful)', verdictKey: 'Supported' as const, value: supportedPct, count: supportedCount, color: '#15803D' },
+            { name: 'Contradiction Corrected', verdictKey: 'Contradicted' as const, value: contradictedPct, count: contradictedCount, color: '#DC2626' },
+            { name: 'Safe Abstentions', verdictKey: 'Abstained' as const, value: abstainPct, count: abstainCount, color: '#64748B' },
+          ]
+        : [
+            { name: 'No Queries Recorded', verdictKey: 'Supported' as const, value: 100, count: 0, color: '#E2E8F0' },
+          ],
+      barData: Object.values(domainCounts),
     };
-  }, [benchmarkConfig]);
+  }, [benchmarkConfig, liveAuditLogs, stats, verifOverview, kbStats]);
 
   const filteredAuditLog = useMemo(() => {
-    return AUDIT_LOG_DATA.filter(item => {
+    return liveAuditLogs.filter(item => {
       const matchesVerdict = filterVerdict === 'All' || item.verdict === filterVerdict;
       const matchesCat = categoryFilter === 'All' || item.category === categoryFilter;
       const q = searchQuery.toLowerCase().trim();
@@ -444,7 +315,7 @@ export const AIMonitoringPage: React.FC = () => {
         item.category.toLowerCase().includes(q);
       return matchesVerdict && matchesCat && matchesSearch;
     });
-  }, [filterVerdict, categoryFilter, searchQuery]);
+  }, [liveAuditLogs, filterVerdict, categoryFilter, searchQuery]);
 
   if (loading) {
     return (
@@ -456,9 +327,9 @@ export const AIMonitoringPage: React.FC = () => {
   }
 
   const SUBSECTION_TABS: Array<{ id: MonitoringSubsection; label: string; badge?: string | number; Icon: React.ElementType }> = [
-    { id: 'overview', label: 'Telemetry & Claims', badge: AUDIT_LOG_DATA.length, Icon: Activity },
+    { id: 'overview', label: 'Telemetry & Claims', badge: liveAuditLogs.length, Icon: Activity },
     { id: 'verification', label: 'Verification Center (7-Q)', badge: verifOverview?.total_interactions ?? interactions.length, Icon: ShieldCheck },
-    { id: 'retrieval', label: 'Vector & KB Index', badge: kbStats?.total_documents ?? stats?.summary?.total_documents ?? 3, Icon: Database },
+    { id: 'retrieval', label: 'Vector & KB Index', badge: kbStats?.total_documents ?? stats?.summary?.total_documents ?? 0, Icon: Database },
     { id: 'latency', label: 'Latency & Pipeline Trace', badge: configMetrics.latency, Icon: Clock },
     { id: 'feedback', label: 'Feedback & Error Review', badge: feedbackStats?.total_feedback ?? feedbackList.length, Icon: MessageSquareWarning },
     { id: 'audit', label: 'Audit Logs & MongoDB', badge: auditEvents.length, Icon: Layers },
@@ -818,7 +689,9 @@ export const AIMonitoringPage: React.FC = () => {
                 <div className="pt-2 px-2 flex items-center justify-between text-[11px] text-slate-500 font-medium">
                   <span>Total Benchmark Share:</span>
                   <span className="font-bold text-emerald-700">
-                    {(configMetrics.supportedPct + configMetrics.contradictedPct + configMetrics.abstainPct).toFixed(1)}% (100% Exact)
+                    {configMetrics.totalQueries > 0
+                      ? `${(configMetrics.supportedPct + configMetrics.contradictedPct + configMetrics.abstainPct).toFixed(1)}% (100% Exact)`
+                      : '0.0% (No queries yet)'}
                   </span>
                 </div>
               </div>
@@ -996,7 +869,7 @@ export const AIMonitoringPage: React.FC = () => {
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    All (26)
+                    All ({configMetrics.totalQueries})
                   </button>
                   <button
                     type="button"
@@ -1008,7 +881,7 @@ export const AIMonitoringPage: React.FC = () => {
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    Supported (18)
+                    Supported ({configMetrics.supportedCount})
                   </button>
                   <button
                     type="button"
@@ -1020,7 +893,7 @@ export const AIMonitoringPage: React.FC = () => {
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    Contradicted (3)
+                    Contradicted ({configMetrics.contradictedCount})
                   </button>
                   <button
                     type="button"
@@ -1032,7 +905,7 @@ export const AIMonitoringPage: React.FC = () => {
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    Abstained (5)
+                    Abstained ({configMetrics.abstainCount})
                   </button>
                 </div>
               </div>

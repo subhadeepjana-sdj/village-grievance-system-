@@ -1,12 +1,13 @@
 import random
 import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.database.mongodb import mongodb_service
 from app.api.auth import get_current_user
 from app.models.user import User, UserRole
+from app.models.department import Department
 from app.models.complaint import Complaint, ComplaintStatus, ComplaintPriority, ComplaintStatusHistory
 from app.schemas.complaint import ComplaintOut, ComplaintUpdate, ComplaintStatusHistoryOut
 from app.utils.file_upload import save_uploaded_file
@@ -64,21 +65,9 @@ def create_complaint(
     db.add(history)
     db.commit()
 
-    # Mirror complaint snapshot & audit event to MongoDB (no-op if disabled)
+    # Mirror full complaint snapshot & audit event to MongoDB (no-op if disabled)
     out = _build_complaint_out(complaint)
-    mongodb_service.upsert_complaint({
-        "id": complaint.id,
-        "complaint_number": complaint.complaint_number,
-        "user_id": complaint.user_id,
-        "category": complaint.category,
-        "title": complaint.title,
-        "description": complaint.description,
-        "location": complaint.location,
-        "status": ComplaintStatus.SUBMITTED.value,
-        "priority": p_enum.value,
-        "file_path": file_rel_path,
-        "created_at": complaint.created_at,
-    })
+    _mirror_complaint_to_mongo(out, citizen_email=current_user.email)
     mongodb_service.log_audit_event({
         "event_type": "USER_ACTION",
         "action": "CREATE",
@@ -114,8 +103,33 @@ def get_complaints(
     if category_filter:
         query = query.filter(Complaint.category.ilike(f"%{category_filter}%"))
 
-    complaints = query.order_by(Complaint.created_at.desc()).all()
-    return [_build_complaint_out(c) for c in complaints]
+    sql_complaints = query.order_by(Complaint.created_at.desc()).all()
+    merged: Dict[str, ComplaintOut] = {}
+    for c in sql_complaints:
+        built = _build_complaint_out(c)
+        merged[built.complaint_number] = built
+
+    if mongodb_service.connected:
+        mongo_docs = mongodb_service.list_complaints(
+            role=current_user.role.value,
+            user_id=current_user.id,
+            user_email=current_user.email,
+            department_id=current_user.department_id,
+            status_filter=status_filter,
+            category_filter=category_filter,
+        )
+        for doc in mongo_docs:
+            cnum = doc.get("complaint_number")
+            if not cnum:
+                continue
+            mongo_out = _mongo_doc_to_complaint_out(doc)
+            existing = merged.get(cnum)
+            if existing is None or str(mongo_out.updated_at) >= str(existing.updated_at):
+                merged[cnum] = mongo_out
+
+    results = list(merged.values())
+    results.sort(key=lambda item: item.created_at, reverse=True)
+    return results
 
 @router.get("/{complaint_id}", response_model=ComplaintOut)
 def get_complaint_by_id(
@@ -128,14 +142,21 @@ def get_complaint_by_id(
         c = db.query(Complaint).filter(Complaint.id == int(complaint_id)).first()
     if not c:
         c = db.query(Complaint).filter(Complaint.complaint_number.ilike(complaint_id)).first()
-    if not c:
-        raise HTTPException(status_code=404, detail="Complaint not found")
 
-    # Authorization check
-    if current_user.role == UserRole.CITIZEN and c.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Unauthorized access to this complaint.")
+    if c:
+        if current_user.role == UserRole.CITIZEN and c.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Unauthorized access to this complaint.")
+        return _build_complaint_out(c)
 
-    return _build_complaint_out(c)
+    if mongodb_service.connected:
+        doc = mongodb_service.get_complaint(complaint_id)
+        if doc:
+            if current_user.role == UserRole.CITIZEN:
+                if doc.get("user_id") != current_user.id and doc.get("citizen_email") != current_user.email:
+                    raise HTTPException(status_code=403, detail="Unauthorized access to this complaint.")
+            return _mongo_doc_to_complaint_out(doc)
+
+    raise HTTPException(status_code=404, detail="Complaint not found")
 
 @router.patch("/{complaint_id}", response_model=ComplaintOut)
 def update_complaint(
@@ -153,56 +174,91 @@ def update_complaint(
         c = db.query(Complaint).filter(Complaint.id == int(complaint_id)).first()
     if not c:
         c = db.query(Complaint).filter(Complaint.complaint_number.ilike(complaint_id)).first()
-    if not c:
-        raise HTTPException(status_code=404, detail="Complaint not found")
 
-    old_st = c.status.value if hasattr(c.status, 'value') else c.status
+    if c:
+        old_st = c.status.value if hasattr(c.status, 'value') else c.status
 
-    if update_data.status:
-        c.status = ComplaintStatus[update_data.status.upper()]
-    if update_data.department_id is not None:
-        c.department_id = update_data.department_id
-    if update_data.priority:
-        c.priority = ComplaintPriority[update_data.priority.upper()]
+        if update_data.status:
+            c.status = ComplaintStatus[update_data.status.upper()]
+        if update_data.department_id is not None:
+            c.department_id = update_data.department_id
+        if update_data.priority:
+            c.priority = ComplaintPriority[update_data.priority.upper()]
 
-    c.updated_at = datetime.datetime.utcnow()
-    db.commit()
-    db.refresh(c)
+        c.updated_at = datetime.datetime.utcnow()
+        db.commit()
+        db.refresh(c)
 
-    new_st = c.status.value if hasattr(c.status, 'value') else c.status
+        new_st = c.status.value if hasattr(c.status, 'value') else c.status
 
-    # Record status history audit
-    history = ComplaintStatusHistory(
-        complaint_id=c.id,
-        old_status=old_st,
-        new_status=new_st,
-        changed_by=f"{current_user.name} ({current_user.role.value})",
-        remarks=update_data.remarks or f"Status updated to {new_st}"
-    )
-    db.add(history)
-    db.commit()
+        # Record status history audit
+        history = ComplaintStatusHistory(
+            complaint_id=c.id,
+            old_status=old_st,
+            new_status=new_st,
+            changed_by=f"{current_user.name} ({current_user.role.value})",
+            remarks=update_data.remarks or f"Status updated to {new_st}"
+        )
+        db.add(history)
+        db.commit()
 
-    mongodb_service.upsert_complaint({
-        "id": c.id,
-        "complaint_number": c.complaint_number,
-        "status": new_st,
-        "department_id": c.department_id,
-        "priority": c.priority.value if hasattr(c.priority, "value") else c.priority,
-        "updated_at": c.updated_at,
-    })
-    mongodb_service.log_audit_event({
-        "event_type": "ADMIN_ACTION",
-        "action": "UPDATE",
-        "entity_type": "complaint",
-        "entity_id": c.complaint_number,
-        "actor_id": current_user.id,
-        "actor_role": current_user.role.value,
-        "old_value": old_st,
-        "new_value": new_st,
-        "description": update_data.remarks or f"Status updated to {new_st}",
-    })
+        built = _build_complaint_out(c)
+        citizen_email = c.citizen.email if c.citizen else None
+        _mirror_complaint_to_mongo(built, citizen_email=citizen_email)
+        mongodb_service.log_audit_event({
+            "event_type": "ADMIN_ACTION",
+            "action": "UPDATE",
+            "entity_type": "complaint",
+            "entity_id": c.complaint_number,
+            "actor_id": current_user.id,
+            "actor_role": current_user.role.value,
+            "old_value": old_st,
+            "new_value": new_st,
+            "description": update_data.remarks or f"Status updated to {new_st}",
+        })
+        return built
 
-    return _build_complaint_out(c)
+    # Cross-container fallback: update directly in MongoDB when complaint lives in MongoDB
+    if mongodb_service.connected:
+        doc = mongodb_service.get_complaint(complaint_id)
+        if doc:
+            old_st = str(doc.get("status") or "SUBMITTED")
+            now = datetime.datetime.now(datetime.UTC)
+            fields_to_set: Dict[str, Any] = {"updated_at": now}
+            if update_data.status:
+                fields_to_set["status"] = ComplaintStatus[update_data.status.upper()].value
+            if update_data.department_id is not None:
+                fields_to_set["department_id"] = update_data.department_id
+                dept = db.query(Department).filter(Department.id == update_data.department_id).first()
+                if dept:
+                    fields_to_set["department_name"] = dept.name
+            if update_data.priority:
+                fields_to_set["priority"] = ComplaintPriority[update_data.priority.upper()].value
+
+            new_st = fields_to_set.get("status", old_st)
+            history_entry = {
+                "old_status": old_st,
+                "new_status": new_st,
+                "changed_by": f"{current_user.name} ({current_user.role.value})",
+                "remarks": update_data.remarks or f"Status updated to {new_st}",
+                "timestamp": now,
+            }
+            updated_doc = mongodb_service.update_complaint_doc(complaint_id, fields_to_set, history_entry)
+            if updated_doc:
+                mongodb_service.log_audit_event({
+                    "event_type": "ADMIN_ACTION",
+                    "action": "UPDATE",
+                    "entity_type": "complaint",
+                    "entity_id": updated_doc.get("complaint_number", complaint_id),
+                    "actor_id": current_user.id,
+                    "actor_role": current_user.role.value,
+                    "old_value": old_st,
+                    "new_value": new_st,
+                    "description": update_data.remarks or f"Status updated to {new_st}",
+                })
+                return _mongo_doc_to_complaint_out(updated_doc)
+
+    raise HTTPException(status_code=404, detail="Complaint not found")
 
 @router.get("/{complaint_id}/history", response_model=List[ComplaintStatusHistoryOut])
 def get_complaint_history(
@@ -215,11 +271,67 @@ def get_complaint_history(
         c = db.query(Complaint).filter(Complaint.id == int(complaint_id)).first()
     if not c:
         c = db.query(Complaint).filter(Complaint.complaint_number.ilike(complaint_id)).first()
-    if not c:
-        raise HTTPException(status_code=404, detail="Complaint not found")
+    if c:
+        return db.query(ComplaintStatusHistory).filter(ComplaintStatusHistory.complaint_id == c.id).order_by(ComplaintStatusHistory.timestamp.asc()).all()
 
-    histories = db.query(ComplaintStatusHistory).filter(ComplaintStatusHistory.complaint_id == c.id).order_by(ComplaintStatusHistory.timestamp.asc()).all()
-    return histories
+    if mongodb_service.connected:
+        doc = mongodb_service.get_complaint(complaint_id)
+        if doc:
+            return _mongo_doc_to_complaint_out(doc).history
+
+    raise HTTPException(status_code=404, detail="Complaint not found")
+
+def _mirror_complaint_to_mongo(out: ComplaintOut, citizen_email: Optional[str] = None) -> None:
+    payload = out.model_dump()
+    payload["status"] = out.status.value if hasattr(out.status, "value") else str(out.status)
+    payload["priority"] = out.priority.value if hasattr(out.priority, "value") else str(out.priority)
+    if citizen_email:
+        payload["citizen_email"] = citizen_email
+    mongodb_service.upsert_complaint(payload)
+
+def _mongo_doc_to_complaint_out(doc: Dict[str, Any]) -> ComplaintOut:
+    raw_st = str(doc.get("status") or "SUBMITTED").upper()
+    st_enum = ComplaintStatus[raw_st] if raw_st in ComplaintStatus.__members__ else ComplaintStatus.SUBMITTED
+    raw_pr = str(doc.get("priority") or "MEDIUM").upper()
+    pr_enum = ComplaintPriority[raw_pr] if raw_pr in ComplaintPriority.__members__ else ComplaintPriority.MEDIUM
+
+    now = datetime.datetime.now(datetime.UTC)
+    created_at = doc.get("created_at") or now
+    updated_at = doc.get("updated_at") or created_at
+
+    history_items = []
+    for idx, h in enumerate(doc.get("history") or [], start=1):
+        history_items.append(
+            ComplaintStatusHistoryOut(
+                id=int(h.get("id") or idx),
+                old_status=h.get("old_status"),
+                new_status=str(h.get("new_status") or st_enum.value),
+                changed_by=str(h.get("changed_by") or "System"),
+                remarks=h.get("remarks"),
+                timestamp=h.get("timestamp") or created_at,
+            )
+        )
+
+    return ComplaintOut(
+        id=int(doc.get("id") or 0),
+        complaint_number=str(doc.get("complaint_number") or ""),
+        user_id=int(doc.get("user_id") or 0),
+        village_id=doc.get("village_id"),
+        department_id=doc.get("department_id"),
+        category=str(doc.get("category") or "Other"),
+        title=str(doc.get("title") or ""),
+        description=str(doc.get("description") or ""),
+        location=doc.get("location"),
+        status=st_enum,
+        priority=pr_enum,
+        file_path=doc.get("file_path"),
+        created_at=created_at,
+        updated_at=updated_at,
+        citizen_name=doc.get("citizen_name") or "Citizen",
+        department_name=doc.get("department_name") or "Unassigned",
+        village_name=doc.get("village_name") or "Gram Panchayat",
+        history=history_items,
+    )
 
 def _build_complaint_out(c: Complaint) -> ComplaintOut:
     return ComplaintOut(
