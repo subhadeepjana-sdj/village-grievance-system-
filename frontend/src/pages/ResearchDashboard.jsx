@@ -57,9 +57,13 @@ const ResearchDashboard = () => {
     setMsg('');
     try {
       const res = await api.post('/research/run');
-      setMetrics(res.data.results);
+      setMetrics(res.data.results || []);
       setBenchmarks(res.data.benchmarks || []);
-      setMsg(`Comparative experiment '${res.data.run_id}' executed & evaluated across test corpus!`);
+      if (res.data.status === 'NO_DATA') {
+        setMsg('No live complaints or knowledge base documents available to evaluate yet. Submit a grievance or upload a document first.');
+      } else {
+        setMsg(`Comparative experiment '${res.data.run_id}' executed across live system records!`);
+      }
     } catch (err) {
       setMsg(err.response?.data?.detail || 'Experiment run failed.');
     } finally {
@@ -149,7 +153,7 @@ const ResearchDashboard = () => {
               System Configuration Evaluation Matrix
             </h2>
             <p className="text-[11px] text-[#69736D]">
-              Measured on Gram Panchayat civic query evaluation dataset (N = 100 annotated test questions).
+              Measured across live comparative evaluation runs (Standalone LLM vs Hybrid RAG vs NLI Verification).
             </p>
           </div>
           <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#EFF5EF] text-[#153D32] font-semibold">
@@ -300,6 +304,29 @@ const ResearchDashboard = () => {
                 <span className="text-[10px] uppercase font-bold text-[#69736D]">Evaluation Query</span>
                 <div className="font-heading font-bold text-sm text-[#17221F]">
                   "{testCases[selectedCaseIdx].question}"
+                </div>
+                {testCases[selectedCaseIdx].expected_answer && (
+                  <div className="text-[11px] text-[#065F46] font-semibold pt-0.5">
+                    Expected Ground Truth: {testCases[selectedCaseIdx].expected_answer}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div className="p-4 rounded-xl bg-[#FEF2F2] border border-[#FECACA] space-y-1.5">
+                  <div className="font-bold text-[#991B1B]">Config A: Standalone LLM</div>
+                  <p className="text-[#7F1D1D] leading-relaxed">{testCases[selectedCaseIdx].config_a_answer}</p>
+                  <div className="text-[11px] font-semibold text-[#991B1B]">{testCases[selectedCaseIdx].config_a_verdict}</div>
+                </div>
+                <div className="p-4 rounded-xl bg-[#EFF6FF] border border-[#BFDBFE] space-y-1.5">
+                  <div className="font-bold text-[#1D4ED8]">Config B: LLM + RAG</div>
+                  <p className="text-[#1E40AF] leading-relaxed">{testCases[selectedCaseIdx].config_b_answer}</p>
+                  <div className="text-[11px] font-semibold text-[#1D4ED8]">{testCases[selectedCaseIdx].config_b_verdict}</div>
+                </div>
+                <div className="p-4 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] space-y-1.5">
+                  <div className="font-bold text-[#065F46]">Config C: RAG + Verification</div>
+                  <p className="text-[#064E3B] leading-relaxed font-medium">{testCases[selectedCaseIdx].config_c_answer}</p>
+                  <div className="text-[11px] font-semibold text-[#065F46]">{testCases[selectedCaseIdx].config_c_verdict}</div>
                 </div>
               </div>
             </div>

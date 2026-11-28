@@ -1,25 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../api/client';
-import { 
-  Building2, 
-  Search, 
-  CheckCircle2, 
-  AlertCircle, 
-  Clock, 
+import {
+  Building2,
+  Search,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
   FileText,
-  Filter, 
-  X, 
-  MapPin, 
-  Plus, 
-  MoreVertical, 
-  Camera, 
-  Check, 
-  ShieldCheck, 
-  ChevronRight, 
-  Sparkles, 
-  RefreshCw, 
-  User, 
-  Phone, 
+  Filter,
+  X,
+  MapPin,
+  Plus,
+  MoreVertical,
+  Camera,
+  Check,
+  ShieldCheck,
+  ChevronRight,
+  Sparkles,
+  RefreshCw,
+  User,
+  Phone,
   Eye,
   AlertTriangle,
   ArrowRight,
@@ -70,21 +70,12 @@ const SERVICE_CATEGORY_GROUPS = [
 
 const ALL_SERVICE_CATEGORIES = SERVICE_CATEGORY_GROUPS.flatMap((g) => g.options);
 
-const DEFAULT_DEPARTMENTS = [
-  { id: 1, name: 'Village Water Dept' },
-  { id: 2, name: 'Gram Swachhta Unit' },
-  { id: 3, name: 'PWD Rural Sub-division' },
-  { id: 4, name: 'MSEDCL Rural Division' },
-  { id: 5, name: 'Agriculture & Irrigation Dept' }
-];
-
 export const PanchayatDashboard = () => {
   const [complaints, setComplaints] = useState([]);
-  const [departments, setDepartments] = useState(DEFAULT_DEPARTMENTS);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
 
-  // Quick Status Filter Tabs: All Complaints (4), Under Review (2), In Progress (1), Resolved (1)
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -100,7 +91,7 @@ export const PanchayatDashboard = () => {
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [manualTitle, setManualTitle] = useState('');
   const [manualCategory, setManualCategory] = useState('Water Supply');
-  const [manualLocation, setManualLocation] = useState('Ward 4, West Village');
+  const [manualLocation, setManualLocation] = useState('');
   const [manualCitizenName, setManualCitizenName] = useState('');
   const [manualCitizenPhone, setManualCitizenPhone] = useState('');
   const [manualDescription, setManualDescription] = useState('');
@@ -256,7 +247,7 @@ export const PanchayatDashboard = () => {
       formData.append('title', manualTitle.trim());
       formData.append('category', manualCategory);
       formData.append('description', fullDescription);
-      formData.append('location', manualLocation.trim() || 'Ward 4, West Village');
+      formData.append('location', manualLocation.trim() || 'Not specified');
       if (manualImageFile) {
         formData.append('file', manualImageFile);
       }
@@ -314,7 +305,7 @@ export const PanchayatDashboard = () => {
 
       // Keyword search
       const q = searchKeyword.toLowerCase().trim();
-      const matchesSearch = !q || 
+      const matchesSearch = !q ||
         c.complaint_number.toLowerCase().includes(q) ||
         c.title.toLowerCase().includes(q) ||
         c.location.toLowerCase().includes(q) ||
@@ -362,9 +353,8 @@ export const PanchayatDashboard = () => {
     return (
       <div className="space-y-1">
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${pillClass}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${
-            status === 'RESOLVED' ? 'bg-emerald-600' : status === 'IN_PROGRESS' ? 'bg-blue-600' : 'bg-amber-600'
-          }`} />
+          <span className={`w-1.5 h-1.5 rounded-full ${status === 'RESOLVED' ? 'bg-emerald-600' : status === 'IN_PROGRESS' ? 'bg-blue-600' : 'bg-amber-600'
+            }`} />
           {statusLabel}
         </span>
         {slaCountdown && (
@@ -381,7 +371,7 @@ export const PanchayatDashboard = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto py-2">
-      
+
       {/* ─── Top Context Header Banner ────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs px-6 sm:px-8 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
@@ -389,7 +379,9 @@ export const PanchayatDashboard = () => {
             <span className="text-xs uppercase font-extrabold tracking-wider text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
               Panchayat Operations
             </span>
-            <span className="text-xs text-slate-500 font-medium">Gram Panchayat Chandanpur • Operations Portal</span>
+            <span className="text-xs text-slate-500 font-medium">
+              {complaints[0]?.village_name ? `${complaints[0].village_name} • Operations Portal` : 'Operations Portal'}
+            </span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Grievance Triage & Department Allocation
@@ -406,8 +398,10 @@ export const PanchayatDashboard = () => {
             <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Cases</span>
           </div>
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2 text-center">
-            <span className="block text-lg font-black text-emerald-800">100%</span>
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700">RAG Synced</span>
+            <span className="block text-lg font-black text-emerald-800">
+              {complaints.length > 0 ? `${Math.round((complaints.filter(c => c.rag_synced).length / complaints.length) * 100)}%` : '0%'}
+            </span>
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700">DB Synced</span>
           </div>
         </div>
       </div>
@@ -419,8 +413,8 @@ export const PanchayatDashboard = () => {
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span className="font-semibold">{msg}</span>
           </div>
-          <button 
-            onClick={() => setMsg('')} 
+          <button
+            onClick={() => setMsg('')}
             className="text-emerald-700 hover:text-emerald-900 font-bold p-1 cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -430,23 +424,21 @@ export const PanchayatDashboard = () => {
 
       {/* ─── Filter & Action Bar ───────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 space-y-4">
-        
+
         {/* Top: Status Filter Tabs */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div className="flex flex-wrap items-center gap-2">
             <button
               id="filter-tab-all"
               onClick={() => setStatusFilter('ALL')}
-              className={`px-3.5 py-1.5 rounded-full text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
-                statusFilter === 'ALL'
-                  ? 'bg-blue-700 text-white font-bold shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 font-semibold'
-              }`}
+              className={`px-3.5 py-1.5 rounded-full text-xs transition-all flex items-center gap-1.5 cursor-pointer ${statusFilter === 'ALL'
+                ? 'bg-blue-700 text-white font-bold shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 font-semibold'
+                }`}
             >
               <span>All Complaints</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                statusFilter === 'ALL' ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-700'
-              }`}>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === 'ALL' ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-700'
+                }`}>
                 {counts.all}
               </span>
             </button>
@@ -454,16 +446,14 @@ export const PanchayatDashboard = () => {
             <button
               id="filter-tab-under-review"
               onClick={() => setStatusFilter('UNDER_REVIEW')}
-              className={`px-3.5 py-1.5 rounded-full text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
-                statusFilter === 'UNDER_REVIEW'
-                  ? 'bg-amber-600 text-white font-bold shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 font-semibold'
-              }`}
+              className={`px-3.5 py-1.5 rounded-full text-xs transition-all flex items-center gap-1.5 cursor-pointer ${statusFilter === 'UNDER_REVIEW'
+                ? 'bg-amber-600 text-white font-bold shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 font-semibold'
+                }`}
             >
               <span>Under Review</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                statusFilter === 'UNDER_REVIEW' ? 'bg-amber-700 text-white' : 'bg-amber-100 text-amber-800'
-              }`}>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === 'UNDER_REVIEW' ? 'bg-amber-700 text-white' : 'bg-amber-100 text-amber-800'
+                }`}>
                 {counts.underReview}
               </span>
             </button>
@@ -471,16 +461,14 @@ export const PanchayatDashboard = () => {
             <button
               id="filter-tab-in-progress"
               onClick={() => setStatusFilter('IN_PROGRESS')}
-              className={`px-3.5 py-1.5 rounded-full text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
-                statusFilter === 'IN_PROGRESS'
-                  ? 'bg-blue-600 text-white font-bold shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 font-semibold'
-              }`}
+              className={`px-3.5 py-1.5 rounded-full text-xs transition-all flex items-center gap-1.5 cursor-pointer ${statusFilter === 'IN_PROGRESS'
+                ? 'bg-blue-600 text-white font-bold shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 font-semibold'
+                }`}
             >
               <span>In Progress</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                statusFilter === 'IN_PROGRESS' ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800'
-              }`}>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === 'IN_PROGRESS' ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800'
+                }`}>
                 {counts.inProgress}
               </span>
             </button>
@@ -488,16 +476,14 @@ export const PanchayatDashboard = () => {
             <button
               id="filter-tab-resolved"
               onClick={() => setStatusFilter('RESOLVED')}
-              className={`px-3.5 py-1.5 rounded-full text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
-                statusFilter === 'RESOLVED'
-                  ? 'bg-emerald-700 text-white font-bold shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 font-semibold'
-              }`}
+              className={`px-3.5 py-1.5 rounded-full text-xs transition-all flex items-center gap-1.5 cursor-pointer ${statusFilter === 'RESOLVED'
+                ? 'bg-emerald-700 text-white font-bold shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 font-semibold'
+                }`}
             >
               <span>Resolved</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                statusFilter === 'RESOLVED' ? 'bg-emerald-800 text-white' : 'bg-emerald-100 text-emerald-800'
-              }`}>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === 'RESOLVED' ? 'bg-emerald-800 text-white' : 'bg-emerald-100 text-emerald-800'
+                }`}>
                 {counts.resolved}
               </span>
             </button>
@@ -527,8 +513,8 @@ export const PanchayatDashboard = () => {
               className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
             />
             {searchKeyword && (
-              <button 
-                onClick={() => setSearchKeyword('')} 
+              <button
+                onClick={() => setSearchKeyword('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
               >
                 ×
@@ -563,7 +549,7 @@ export const PanchayatDashboard = () => {
 
       {/* ─── Responsive Complaints Table Container ────────────────── */}
       <div className="w-full overflow-hidden bg-white rounded-2xl border border-slate-200/80 shadow-xs">
-        
+
         {/* Table Subheader */}
         <div className="p-4 sm:px-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/50">
           <div className="flex items-center gap-2">
@@ -607,8 +593,8 @@ export const PanchayatDashboard = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredComplaints.map((c) => (
-                  <tr 
-                    key={c.id} 
+                  <tr
+                    key={c.id}
                     className="hover:bg-slate-50/80 transition-colors group"
                   >
                     {/* 1. ID Column: Styled on single line with font-mono text-xs font-semibold text-blue-700 */}
@@ -617,7 +603,7 @@ export const PanchayatDashboard = () => {
                         {c.complaint_number}
                       </span>
                       <div className="text-[10px] text-slate-400 font-mono mt-1">
-                        {c.created_at || 'Oct 2026'}
+                        {c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                       </div>
                     </td>
 
@@ -627,7 +613,7 @@ export const PanchayatDashboard = () => {
                         <div className="text-sm font-semibold text-slate-900 leading-snug">
                           {c.title}
                         </div>
-                        
+
                         {/* Evidence attachment preview chip + Citizen line */}
                         <div className="flex flex-wrap items-center gap-2 pt-0.5">
                           {c.evidence_photos && c.evidence_photos.length > 0 ? (
@@ -682,7 +668,7 @@ export const PanchayatDashboard = () => {
                         </div>
                         <div className="text-[11px] text-slate-500 flex items-center gap-1">
                           <User className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span>{c.assigned_officer || 'Gram Sevak'}</span>
+                          <span>{c.assigned_officer || (c.department_name && c.department_name !== 'Unassigned' ? 'Department Queue' : 'Not assigned')}</span>
                         </div>
                       </div>
                     </td>
@@ -779,7 +765,7 @@ export const PanchayatDashboard = () => {
       {triageComplaint && (
         <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs transition-opacity animate-in fade-in">
           <div className="w-full max-w-xl bg-white h-full shadow-2xl flex flex-col justify-between border-l border-slate-200 animate-in slide-in-from-right duration-200">
-            
+
             {/* Drawer Header */}
             <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50">
               <div className="space-y-1">
@@ -805,7 +791,7 @@ export const PanchayatDashboard = () => {
 
             {/* Drawer Scrollable Content */}
             <div className="p-6 overflow-y-auto space-y-5 text-xs flex-1">
-              
+
               {/* Section 1: Citizen Grievance & Evidence */}
               <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
                 <div>
@@ -824,15 +810,18 @@ export const PanchayatDashboard = () => {
                 <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1">
                   <div>
                     <span className="font-bold text-slate-500">Citizen: </span>
-                    <span className="text-slate-800">{triageComplaint.citizen_name || 'Walk-in'}</span>
+                    <span className="text-slate-800">{triageComplaint.citizen_name || 'Citizen'}</span>
                   </div>
                   <div>
                     <span className="font-bold text-slate-500">Contact: </span>
-                    <span className="text-slate-800">{triageComplaint.citizen_phone || 'N/A'}</span>
+                    <span className="text-slate-800">{triageComplaint.citizen_phone || 'Not provided'}</span>
                   </div>
                   <div className="col-span-2">
                     <span className="font-bold text-slate-500">Location: </span>
-                    <span className="text-slate-800">{triageComplaint.location} ({triageComplaint.landmark})</span>
+                    <span className="text-slate-800">
+                      {triageComplaint.location || 'Not specified'}
+                      {triageComplaint.landmark ? ` (${triageComplaint.landmark})` : ''}
+                    </span>
                   </div>
                 </div>
 
@@ -845,14 +834,14 @@ export const PanchayatDashboard = () => {
                     </span>
                     <div className="flex gap-2 overflow-x-auto pb-1">
                       {triageComplaint.evidence_photos.map((photo, i) => (
-                        <div 
-                          key={i} 
+                        <div
+                          key={i}
                           onClick={() => setPreviewImage(photo)}
                           className="relative w-32 h-20 rounded-lg overflow-hidden border border-slate-300 shadow-xs cursor-pointer group shrink-0"
                         >
-                          <img 
-                            src={photo} 
-                            alt={`Evidence ${i + 1}`} 
+                          <img
+                            src={photo}
+                            alt={`Evidence ${i + 1}`}
                             className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
                           />
                           <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] font-bold transition">
@@ -878,7 +867,7 @@ export const PanchayatDashboard = () => {
 
               {/* Section 3: Triage Form */}
               <form id="triage-form" onSubmit={handleTriageSubmit} className="space-y-4">
-                
+
                 {/* Department Reassignment Dropdown */}
                 <div className="space-y-1.5">
                   <label className="font-bold text-slate-800 text-xs block">
@@ -909,17 +898,16 @@ export const PanchayatDashboard = () => {
                       { val: 'IN_PROGRESS', label: 'In Progress', color: 'blue' },
                       { val: 'RESOLVED', label: 'Resolved', color: 'emerald' }
                     ].map(st => (
-                      <label 
+                      <label
                         key={st.val}
-                        className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition text-center ${
-                          triageStatus === st.val
-                            ? st.color === 'emerald'
-                              ? 'bg-emerald-50 border-emerald-400 text-emerald-900 font-bold ring-1 ring-emerald-400'
-                              : st.color === 'blue'
+                        className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition text-center ${triageStatus === st.val
+                          ? st.color === 'emerald'
+                            ? 'bg-emerald-50 border-emerald-400 text-emerald-900 font-bold ring-1 ring-emerald-400'
+                            : st.color === 'blue'
                               ? 'bg-blue-50 border-blue-400 text-blue-900 font-bold ring-1 ring-blue-400'
                               : 'bg-amber-50 border-amber-400 text-amber-900 font-bold ring-1 ring-amber-400'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
                       >
                         <input
                           type="radio"
@@ -946,7 +934,7 @@ export const PanchayatDashboard = () => {
                     rows={4}
                     value={triageRemarks}
                     onChange={(e) => setTriageRemarks(e.target.value)}
-                    placeholder="e.g. Plumbing team dispatched to inspect main supply valve and verify water pressure restoration."
+                    placeholder="Enter resolution remarks or field inspection notes..."
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
                   />
                   <p className="text-[10px] text-slate-500">
@@ -995,7 +983,7 @@ export const PanchayatDashboard = () => {
       {logModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs transition-opacity animate-in fade-in">
           <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto bg-white rounded-2xl border border-slate-200 shadow-2xl animate-in zoom-in-95 duration-150">
-            
+
             <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50 sticky top-0 z-10">
               <div className="space-y-0.5">
                 <span className="text-[10px] uppercase font-extrabold tracking-wider text-blue-700">
@@ -1015,7 +1003,7 @@ export const PanchayatDashboard = () => {
             </div>
 
             <form onSubmit={handleCreateManualGrievance} className="p-6 space-y-4 text-xs">
-              
+
               <div className="space-y-1">
                 <label className="font-bold text-slate-800 block">Complaint Title *</label>
                 <input
@@ -1023,7 +1011,7 @@ export const PanchayatDashboard = () => {
                   required
                   value={manualTitle}
                   onChange={(e) => setManualTitle(e.target.value)}
-                  placeholder="e.g. Broken handpump handle near Ward 4 community hall"
+                  placeholder="Enter concise grievance title"
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
                 />
               </div>
@@ -1054,7 +1042,7 @@ export const PanchayatDashboard = () => {
                     type="text"
                     value={manualLocation}
                     onChange={(e) => setManualLocation(e.target.value)}
-                    placeholder="e.g. Ward 4, West Village"
+                    placeholder="Enter ward, street, or landmark"
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
                   />
                 </div>
@@ -1078,7 +1066,7 @@ export const PanchayatDashboard = () => {
                     type="text"
                     value={manualCitizenPhone}
                     onChange={(e) => setManualCitizenPhone(e.target.value)}
-                    placeholder="e.g. +91 98234 56789"
+                    placeholder="Enter citizen phone number"
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
                   />
                 </div>
@@ -1195,12 +1183,12 @@ export const PanchayatDashboard = () => {
 
       {/* ─── Evidence Photo Modal ─────────────────────────────────── */}
       {previewImage && (
-        <div 
+        <div
           onClick={() => setPreviewImage(null)}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs transition-opacity animate-in fade-in"
         >
-          <div 
-            onClick={(e) => e.stopPropagation()} 
+          <div
+            onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-2xl overflow-hidden max-w-2xl w-full border border-slate-200 shadow-2xl animate-in zoom-in-95 duration-150"
           >
             <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
@@ -1208,7 +1196,7 @@ export const PanchayatDashboard = () => {
                 <Camera className="w-4 h-4 text-slate-500" />
                 Citizen Uploaded Evidence Photo
               </span>
-              <button 
+              <button
                 onClick={() => setPreviewImage(null)}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
               >
@@ -1216,15 +1204,15 @@ export const PanchayatDashboard = () => {
               </button>
             </div>
             <div className="p-4 bg-slate-100 flex items-center justify-center max-h-[70vh] overflow-hidden">
-              <img 
-                src={previewImage} 
-                alt="Evidence Preview" 
+              <img
+                src={previewImage}
+                alt="Evidence Preview"
                 className="max-h-[65vh] w-auto object-contain rounded-lg shadow-md"
               />
             </div>
             <div className="p-3 bg-white border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
               <span>Verified JPEG Evidence • High-resolution Ground Truth</span>
-              <button 
+              <button
                 onClick={() => setPreviewImage(null)}
                 className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs cursor-pointer"
               >

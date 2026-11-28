@@ -89,7 +89,8 @@ const DepartmentDashboard = () => {
             Department Work Queue
           </h1>
           <p className="text-xs text-[#64748B]">
-            Official: <strong className="text-[#1A202C]">{user?.name}</strong> ({user?.email}) • Gram Panchayat Chandanpur
+            Official: <strong className="text-[#1A202C]">{user?.name}</strong> ({user?.email})
+            {complaints[0]?.village_name ? ` • ${complaints[0].village_name}` : ''}
           </p>
         </div>
       </div>
@@ -187,7 +188,7 @@ const DepartmentDashboard = () => {
                     <td className="p-3.5 text-[#1A202C]">
                       <div className="flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-[#0047BA]" />
-                        <span>{c.location || 'Chandanpur'}</span>
+                        <span>{c.location || 'Not specified'}</span>
                       </div>
                     </td>
                     <td className="p-3.5">
@@ -261,7 +262,7 @@ const DepartmentDashboard = () => {
                   required
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="Detail the work carried out (e.g. Cleared main overhead pipeline blockage at Ward 4 junction. Water purity tested and normal)."
+                  placeholder="Enter field inspection findings or resolution notes..."
                   className="w-full px-3 py-2 rounded-lg border border-[#E5E7DF] bg-[#FFFFFF] text-[#17221F] focus:outline-none focus:ring-2 focus:ring-[#153D32] leading-relaxed"
                 />
               </div>

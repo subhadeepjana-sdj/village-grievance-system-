@@ -3,15 +3,15 @@ import { useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import EvidenceBadge from '../components/EvidenceBadge';
 import EvidenceModal from '../components/EvidenceModal';
-import { 
-  Bot, 
-  Send, 
-  Sparkles, 
-  ShieldCheck, 
-  AlertTriangle, 
-  HelpCircle, 
-  Cpu, 
-  Database, 
+import {
+  Bot,
+  Send,
+  Sparkles,
+  ShieldCheck,
+  AlertTriangle,
+  HelpCircle,
+  Cpu,
+  Database,
   FileText,
   Clock,
   Plus,
@@ -129,22 +129,22 @@ const AiAssistantPage = () => {
   };
 
   // Find active message for right evidence panel
-  const activeAIMessage = messages[activeEvidenceIndex]?.sender === 'ai' 
-    ? messages[activeEvidenceIndex] 
+  const activeAIMessage = messages[activeEvidenceIndex]?.sender === 'ai'
+    ? messages[activeEvidenceIndex]
     : [...messages].reverse().find(m => m.sender === 'ai');
 
   return (
     <div className="py-6 px-4 sm:px-6 lg:px-8 max-w-[1600px] mx-auto">
-      
+
       {/* 3-Column Desktop Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-8rem)] min-h-[650px]">
-        
+
         {/* ========================================================= */}
         {/* LEFT PANEL: Conversation Topics, Filters & Engine Config  */}
         {/* ========================================================= */}
         <div className="hidden lg:flex lg:col-span-3 flex-col justify-between civic-card p-4 bg-[#FFFFFF] border border-[#E5E7DF]">
           <div className="space-y-5 overflow-y-auto pr-1">
-            
+
             {/* New Inquiry Button */}
             <button
               onClick={() => {
@@ -172,11 +172,10 @@ const AiAssistantPage = () => {
                     key={cfg.id}
                     type="button"
                     onClick={() => setConfiguration(cfg.id)}
-                    className={`w-full text-left p-2 rounded-lg text-xs transition cursor-pointer ${
-                      configuration === cfg.id
-                        ? 'bg-[#0047BA] text-white'
-                        : 'bg-white text-[#1A202C] hover:bg-[#E8F0FE] border border-[#E2E8F0]'
-                    }`}
+                    className={`w-full text-left p-2 rounded-lg text-xs transition cursor-pointer ${configuration === cfg.id
+                      ? 'bg-[#0047BA] text-white'
+                      : 'bg-white text-[#1A202C] hover:bg-[#E8F0FE] border border-[#E2E8F0]'
+                      }`}
                   >
                     <div className="font-bold text-[11px] leading-tight">{cfg.label}</div>
                     <div className={`text-[10px] mt-0.5 ${configuration === cfg.id ? 'text-white/80' : 'text-[#64748B]'}`}>
@@ -225,7 +224,7 @@ const AiAssistantPage = () => {
         {/* CENTER PANEL: Main Conversation Stream & Input Bar        */}
         {/* ========================================================= */}
         <div className="lg:col-span-6 flex flex-col justify-between gis-card p-4 sm:p-6 bg-white border border-[#E2E8F0]">
-          
+
           {/* Conversation Header */}
           <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
             <div className="flex items-center gap-2">
@@ -256,8 +255,8 @@ const AiAssistantPage = () => {
           {/* Messages Stream */}
           <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1">
             {messages.map((msg, i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} animate-civic-fade`}
               >
                 {msg.sender === 'user' ? (
@@ -267,7 +266,7 @@ const AiAssistantPage = () => {
                   </div>
                 ) : (
                   /* AI Verified Response Bubble */
-                  <div 
+                  <div
                     onClick={() => setActiveEvidenceIndex(i)}
                     className="max-w-[92%] rounded-2xl p-4 bg-[#F7F6F0] border border-[#E5E7DF] space-y-3 cursor-pointer hover:border-[#153D32] transition"
                   >
@@ -345,7 +344,7 @@ const AiAssistantPage = () => {
         {showRightPanel && (
           <div className="lg:col-span-3 flex flex-col justify-between civic-card p-4 bg-[#F7F6F0] border border-[#E5E7DF] overflow-y-auto">
             <div className="space-y-4">
-              
+
               <div className="flex items-center justify-between pb-3 border-b border-[#E5E7DF]">
                 <div className="flex items-center gap-1.5 text-xs font-heading font-extrabold text-[#17221F]">
                   <Database className="w-4 h-4 text-[#153D32]" />
@@ -396,11 +395,10 @@ const AiAssistantPage = () => {
                         <div key={vIdx} className="p-2.5 rounded-lg bg-[#FFFFFF] border border-[#E5E7DF] text-[11px] space-y-1">
                           <div className="flex items-center justify-between font-bold text-[#17221F]">
                             <span className="truncate max-w-[140px]">{vr.claim}</span>
-                            <span className={`text-[9px] px-1.5 py-0.2 rounded ${
-                              vr.verification_result === 'SUPPORTED'
-                                ? 'bg-[#ECFDF5] text-[#065F46]'
-                                : 'bg-[#FEF2F2] text-[#991B1B]'
-                            }`}>
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded ${vr.verification_result === 'SUPPORTED'
+                              ? 'bg-[#ECFDF5] text-[#065F46]'
+                              : 'bg-[#FEF2F2] text-[#991B1B]'
+                              }`}>
                               {vr.verification_result}
                             </span>
                           </div>

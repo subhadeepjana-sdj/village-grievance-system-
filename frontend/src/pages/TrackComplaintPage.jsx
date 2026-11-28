@@ -83,7 +83,7 @@ const TrackComplaintPage = () => {
                 <span className="text-[10px] uppercase font-black tracking-widest text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
                   GIS Civic Transparency
                 </span>
-                <span className="text-xs text-slate-500 font-medium">Gram Panchayat Chandanpur</span>
+                <span className="text-xs text-slate-500 font-medium">{complaint?.village_name || 'Civic Grievance Portal'}</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 flex items-center gap-2.5">
                 <Search className="w-6 h-6 text-blue-600" /> Track Grievance Status
@@ -111,7 +111,7 @@ const TrackComplaintPage = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Enter complaint number (e.g. GRV-2026-XXXXXX)"
+                placeholder="Enter complaint tracking ID"
                 className="w-full pl-4 pr-4 py-3 rounded-xl border border-slate-200 font-mono text-xs sm:text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 transition shadow-2xs"
               />
             </div>
